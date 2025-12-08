@@ -1,0 +1,2 @@
+﻿- File docker-compose.yml là file cấu hình base cho Docker Compose, định nghĩa các dịch vụ, mạng và volume cần thiết để chạy ứng dụng của bạn trong các container Docker.
+- File docker-compose.override.yml là file cấu hình mở rộng cho Docker Compose, cho phép bạn ghi đè hoặc bổ sung các thiết lập từ file docker-compose.yml mà không cần thay đổi file gốc.

@@ -1,0 +1,375 @@
+## .gitignore for .NET Microservices Project
+
+###################
+# .NET / C# Files
+###################
+
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# Visual Studio cache/options directory
+.vs/
+.vscode/settings.json
+.vscode/tasks.json
+.vscode/launch.json
+
+# User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Build Results
+*_i.c
+*_p.c
+*_h.h
+*.ilk
+*.meta
+*.obj
+*.iobj
+*.pch
+*.pdb
+*.ipdb
+*.pgc
+*.pgd
+*.rsp
+*.sbr
+*.tlb
+*.tli
+*.tlh
+*.tmp
+*.tmp_proj
+*_wpftmp.csproj
+*.log
+*.tlog
+*.vspscc
+*.vssscc
+.builds
+*.pidb
+*.svclog
+*.scc
+
+# ASP.NET Core
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# NuGet Packages
+*.nupkg
+*.snupkg
+**/packages/*
+!**/packages/build/
+*.nuget.props
+*.nuget.targets
+.nuget/
+
+# Package Manager
+node_modules/
+bower_components/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Entity Framework
+*.mdf
+*.ldf
+*.ndf
+
+# Rider
+.idea/
+*.sln.iml
+riderModule.iml
+/_ReSharper.Caches/
+
+####################
+# Docker Files
+####################
+
+# Docker volumes data (important!)
+**/volumes/
+**/data/
+
+# Docker Compose override for local development
+docker-compose.override.local.yml
+
+####################
+# Environment Files
+####################
+
+# Production environment files (contains passwords!)
+.env.prod
+.env.production
+.env.local
+*.env.local
+
+# Keep example files
+!.env.example
+!.env.prod.example
+!.env.dev.example
+
+####################
+# Database Files
+####################
+
+# SQL Server
+*.mdf
+*.ldf
+*.ndf
+*.bak
+
+# SQLite
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# MySQL
+*.sql.gz
+*.sql.bz2
+
+####################
+# Logs
+####################
+
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# Diagnostic reports
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+####################
+# OS Files
+####################
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+####################
+# IDE / Editors
+####################
+
+# Visual Studio Code
+.vscode/*
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+!.vscode/settings.json.example
+
+# JetBrains Rider
+.idea/
+*.sln.iml
+
+# Visual Studio
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+####################
+# Test Results
+####################
+
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+TestResults/
+[Tt]est[Rr]esults/
+coverage/
+*.coverage
+*.coveragexml
+
+# NCrunch
+_NCrunch_*
+.*crunch*.local.xml
+nCrunchTemp_*
+
+# dotCover
+*.dotCover
+
+####################
+# Backup Files
+####################
+
+*.bak
+*.backup
+*.old
+*.orig
+*~
+
+####################
+# Temporary Files
+####################
+
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+.#*
+
+####################
+# Docker Specific
+####################
+
+# Docker volumes (local data)
+docker-volumes/
+postgres-data/
+mysql-data/
+mongo-data/
+redis-data/
+elasticsearch-data/
+sqlserver-data/
+portainer-data/
+pgadmin-data/
+
+####################
+# Certificates & Keys
+####################
+
+# SSL/TLS certificates
+*.pem
+*.key
+*.crt
+*.cer
+*.pfx
+*.p12
+
+# SSH keys
+id_rsa
+id_rsa.pub
+*.key
+*.pub
+
+####################
+# Sensitive Data
+####################
+
+# Configuration files with secrets
+appsettings.Production.json
+appsettings.Staging.json
+secrets.json
+*.secrets.json
+
+# Keep development configs
+!appsettings.Development.json
+!appsettings.json
+
+####################
+# Build Artifacts
+####################
+
+publish/
+dist/
+out/
+build/
+
+####################
+# Package Files
+####################
+
+*.tar
+*.tar.gz
+*.zip
+*.rar
+*.7z
+
+####################
+# Documentation
+####################
+
+# Keep markdown docs
+!README.md
+!CHANGELOG.md
+!CONTRIBUTING.md
+!DOCKER_GUIDE.md
+
+####################
+# Git
+####################
+
+*.orig
+*.BACKUP.*
+*.BASE.*
+*.LOCAL.*
+*.REMOTE.*
+
+####################
+# Miscellaneous
+####################
+
+# Ignore everything in temp folders
+temp/
+tmp/
+cache/
+
+# ReSharper
+_ReSharper*/
+*.[Rr]e[Ss]harper
+*.DotSettings.user
+
+# Azure Functions
+local.settings.json
+
+####################
+# Keep These Files
+####################
+
+# Always keep these important files
+!.gitignore
+!.gitattributes
+!.editorconfig
+!global.json
+!Directory.Build.props
+!Directory.Build.targets
