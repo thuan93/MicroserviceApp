@@ -1,5 +1,3 @@
-version: '3.8'
-
 # Production environment - Includes Portainer for remote management
 # Usage: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 
