@@ -29,6 +29,11 @@ public class ProductConfiguration : IEntityTypeConfiguration<Entities.Product>
             .HasForeignKey(p => p.CategoryId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        builder.HasOne(p => p.Supplier)
+            .WithMany(s => s.Products)
+            .HasForeignKey(p => p.SupplierId)
+            .OnDelete(DeleteBehavior.SetNull);
+
         builder.Property(p => p.CreatedDate)
             .IsRequired();
 

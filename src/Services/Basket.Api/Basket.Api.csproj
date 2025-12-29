@@ -7,7 +7,21 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Redis -->
+    <PackageReference Include="StackExchange.Redis" Version="2.8.16" />
+
+    <!-- Swagger -->
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="7.2.0" />
+
+    <!-- Health Checks -->
+    <PackageReference Include="AspNetCore.HealthChecks.Redis" Version="8.0.1" />
+    <PackageReference Include="AspNetCore.HealthChecks.UI.Client" Version="8.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- BuildingBlocks References -->
     <ProjectReference Include="..\..\BuildingBlocks\Common.Logging\Common.Logging.csproj" />
+    <ProjectReference Include="..\..\BuildingBlocks\Shared\Shared.csproj" />
   </ItemGroup>
 
 </Project>

@@ -9,6 +9,7 @@ public record ProductDto
     public int StockQuantity { get; set; }
     public long CategoryId { get; set; }
     public string CategoryName { get; set; } = string.Empty;
+    public long? SupplierId { get; set; }
 }
 
 public record CreateProductDto
@@ -18,6 +19,7 @@ public record CreateProductDto
     public decimal Price { get; set; }
     public int StockQuantity { get; set; }
     public long CategoryId { get; set; }
+    public long? SupplierId { get; set; }
 }
 
 public record UpdateProductDto
@@ -27,4 +29,5 @@ public record UpdateProductDto
     public decimal Price { get; set; }
     public int StockQuantity { get; set; }
     public long CategoryId { get; set; }
+    public long? SupplierId { get; set; }
 }

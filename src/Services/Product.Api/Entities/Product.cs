@@ -1,6 +1,8 @@
+using Contracts.Common;
+
 namespace Product.Api.Entities;
 
-public class Product
+public class Product : IEntityBase, IAuditableEntity
 {
     public long Id { get; set; }
     public string Name { get; set; } = string.Empty;

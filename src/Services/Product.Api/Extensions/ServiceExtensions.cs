@@ -1,3 +1,4 @@
+using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Product.Api.Persistence;
 using Product.Api.Repositories;
@@ -16,6 +17,19 @@ public static class ServiceExtensions
 
         // Repositories
         services.AddScoped<IProductRepository, ProductRepository>();
+
+        // MassTransit RabbitMQ
+        services.AddMassTransit(config =>
+        {
+            config.UsingRabbitMq((context, cfg) =>
+            {
+                cfg.Host(configuration["RabbitMQ:Host"] ?? "localhost", "/", h =>
+                {
+                    h.Username(configuration["RabbitMQ:Username"] ?? "guest");
+                    h.Password(configuration["RabbitMQ:Password"] ?? "guest");
+                });
+            });
+        });
 
         // Health Checks
         services.AddHealthChecks()
