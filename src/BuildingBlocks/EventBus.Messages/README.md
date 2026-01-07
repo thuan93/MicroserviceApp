@@ -1,24 +1,23 @@
-# EventBus.Messages BuildingBlock
+ï»¿# EventBus.Messages BuildingBlock
 
-## M?c ?ích
-Ch?a các event contracts (message contracts) cho RabbitMQ event-driven communication gi?a các microservices.
+## Má»¥c Ä‘Ã­ch
+Chá»©a cÃ¡c event contracts (message contracts) cho RabbitMQ event-driven communication giá»¯a cÃ¡c microservices.
 
-## C?u trúc
+## Cáº¥u trÃºc
 
 ```
 EventBus.Messages/
-??? Common/
-?   ??? IntegrationBaseEvent      # Base class cho t?t c? events
-??? Events/
-    ??? Product/
-    ?   ??? ProductEvents         # Product-related events
-    ??? Order/
-    ?   ??? OrderEvents           # Order-related events
-    ??? Inventory/
-    ?   ??? InventoryEvents       # Inventory-related events
-    ??? Customer/
-        ??? CustomerEvents        # Customer-related events
-```
+    Common/
+        IntegrationBaseEvent      # Base class cho táº¥t cáº£ events
+    Events/
+        Product/
+            ProductEvents         # Product-related events
+        Order/
+            OrderEvents           # Order-related events
+        Inventory/
+            InventoryEvents       # Inventory-related events
+        Customer/
+            CustomerEvents        # Customer-related events
 
 ## Event Flow Example
 
@@ -33,7 +32,7 @@ Product.Api              RabbitMQ              Inventory.Api
     | <-- InventoryReserved |   <-- Publish Event   |
 ```
 
-## Cách s? d?ng
+## Cï¿½ch s? d?ng
 
 ### 1. Publish Event (Product.Api)
 
@@ -112,7 +111,7 @@ services.AddMassTransit(config =>
 ### Product Events
 - ? `ProductCreatedEvent` - Khi t?o product m?i
 - ? `ProductUpdatedEvent` - Khi update product
-- ? `ProductDeletedEvent` - Khi xóa product
+- ? `ProductDeletedEvent` - Khi xï¿½a product
 - ? `ProductStockUpdatedEvent` - Khi stock thay ??i
 
 ### Order Events
@@ -128,11 +127,11 @@ services.AddMassTransit(config =>
 ### Customer Events
 - ? `CustomerCreatedEvent` - Khi t?o customer
 - ? `CustomerUpdatedEvent` - Khi update customer
-- ? `CustomerDeletedEvent` - Khi xóa customer
+- ? `CustomerDeletedEvent` - Khi xï¿½a customer
 
 ## Event Properties
 
-M?i event ??u k? th?a `IntegrationBaseEvent` và có:
+M?i event ??u k? th?a `IntegrationBaseEvent` vï¿½ cï¿½:
 - `Id` (Guid) - Unique event identifier
 - `CreationDate` (DateTime) - UTC timestamp
 
@@ -146,4 +145,4 @@ M?i event ??u k? th?a `IntegrationBaseEvent` và có:
 
 ## Dependencies
 
-Không có external dependencies - Pure .NET 10
+Khï¿½ng cï¿½ external dependencies - Pure .NET 10
