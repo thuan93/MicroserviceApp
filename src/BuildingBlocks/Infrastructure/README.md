@@ -1,9 +1,9 @@
-# Infrastructure BuildingBlock
+﻿# Infrastructure BuildingBlock
 
-## M?c ?�ch
-Cung c?p c�c base classes v� interfaces cho Data Access Layer, �p d?ng Repository Pattern v� Unit of Work Pattern.
+## Mục đích
+Cung cấp các base classes và interfaces cho Data Access Layer, áp dụng Repository Pattern và Unit of Work Pattern.
 
-## C?u tr�c
+## Cấu trúc
 
 ```
 Infrastructure/
@@ -16,11 +16,11 @@ Infrastructure/
     ??? BaseSpecification<T>     # Base specification implementation
 ```
 
-## C�ch s? d?ng
+## Cách sử dụng
 
 ### 1. Repository Pattern
 
-**T?o repository c? th?:**
+**Tạo repository cụ thể:**
 ```csharp
 public interface IProductRepository : IRepository<Product>
 {
@@ -42,12 +42,12 @@ public class ProductRepository : RepositoryBase<Product, ProductContext>, IProdu
 
 ### 2. Unit of Work Pattern
 
-**??ng k� trong DI:**
+**Đăng ký trong DI:**
 ```csharp
 services.AddScoped<IUnitOfWork, UnitOfWork<ProductContext>>();
 ```
 
-**S? d?ng:**
+**Sử dụng:**
 ```csharp
 public class ProductService
 {
@@ -73,7 +73,7 @@ public class ProductService
 
 ### 3. Specification Pattern
 
-**T?o specification:**
+**Tạo specification:**
 ```csharp
 public class ProductsByCategorySpec : BaseSpecification<Product>
 {

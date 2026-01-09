@@ -1,9 +1,9 @@
-# Shared BuildingBlock
+﻿# Shared BuildingBlock
 
-## M?c ?�ch
-Ch?a c�c utilities, extensions, constants, v� exceptions d�ng chung cho t?t c? microservices.
+## Mục đích
+Chứa các utilities, extensions, constants, và exceptions dùng chung cho tất cả microservices.
 
-## C?u tr�c
+## Cấu trúc
 
 ```
 Shared/
@@ -19,7 +19,7 @@ Shared/
     ??? CustomExceptions      # Custom exception classes
 ```
 
-## C�ch s? d?ng
+## Cách sử dụng
 
 ### 1. ApiResponse - Standardized Response
 
@@ -83,4 +83,4 @@ if (orderDate.IsToday()) { }
 
 ## Dependencies
 
-Kh�ng c� external dependencies - Pure .NET 10
+Không có external dependencies - Pure .NET 10
