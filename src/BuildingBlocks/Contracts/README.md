@@ -1,24 +1,24 @@
-# Contracts BuildingBlock
+﻿# Contracts BuildingBlock
 
-## M?c ?�ch
-Ch?a c�c DTOs v� interfaces d�ng chung gi?a c�c microservices ?? ??m b?o t�nh nh?t qu�n.
+## Mục đích
+Chứa các DTOs và interfaces dùng chung giữa các microservices nhằm bảo toàn tính nhất quán.
 
-## C?u tr�c
+## Cấu trúc
 
 ```
 Contracts/
-??? Common/
-?   ??? Interfaces            # Base interfaces (IEntityBase, IAuditableEntity, ISoftDelete)
-??? DTOs/
-    ??? Product/
-    ?   ??? ProductDtos      # Product DTOs
-    ??? Category/
-    ?   ??? CategoryDtos     # Category DTOs
-    ??? Supplier/
-        ??? SupplierDtos     # Supplier DTOs
+    Common/
+        Interfaces           # Base interfaces (IEntityBase, IAuditableEntity, ISoftDelete)
+    DTOs/
+        Product/
+            ProductDtos      # Product DTOs
+        Category/
+            CategoryDtos     # Category DTOs
+        Supplier/
+            SupplierDtos     # Supplier DTOs
 ```
 
-## C�ch s? d?ng
+## Cách sử dụng
 
 ### 1. Base Interfaces
 
@@ -46,7 +46,7 @@ public async Task<ProductDto> GetProductAsync(long id)
 ```
 
 ```csharp
-// Trong Ordering.Api c?ng c� th? s? d?ng
+// Trong Ordering.Api cũng có thể sử dụng
 using Contracts.DTOs.Product;
 
 public class OrderService
@@ -69,21 +69,21 @@ public class Category : IEntityBase, ISoftDelete
 }
 ```
 
-## L?i �ch
+## Lợi ích
 
-? **Consistency**: ??m b?o DTOs gi?ng nhau gi?a c�c services  
-? **Reusability**: T�i s? d?ng DTOs thay v� duplicate  
-? **Type Safety**: Compile-time checking khi giao ti?p gi?a services  
-? **Maintainability**: Thay ??i 1 ch?, apply cho t?t c? services  
+? **Consistency**: Đảm bảo DTOs giống nhau giữa các services  
+? **Reusability**: Tái sử dụng DTOs thay vì duplicate  
+? **Type Safety**: Compile-time checking khi giao tiếp giữa services  
+? **Maintainability**: Thay đổi 1 chỗ, apply cho tất cả services  
 
-## Khi n�o d�ng?
+## Khi nào dùng?
 
-- ? DTOs ???c share gi?a nhi?u services
+- ? DTOs được share giữa nhiều services
 - ? Common interfaces cho entities
-- ? Validation rules d�ng chung
-- ? Business logic (n�n ?? trong service layer)
+- ? Validation rules dùng chung
+- ? Business logic (nên để trong service layer)
 - ? Infrastructure concerns
 
 ## Dependencies
 
-Kh�ng c� external dependencies - Pure .NET 10
+Không có external dependencies - Pure .NET 10
