@@ -1,25 +1,26 @@
+using AspNetCore.Extensions;
 using Common.Logging;
-using HealthChecks.UI.Client;
-using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Customer.Api.Extensions;
+using HealthChecks.UI.Client;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
 builder.Services.AddControllers();
+builder.Services.AddMicroserviceJwtAuthentication(builder.Configuration);
 builder.Services.AddApplicationServices(builder.Configuration);
-builder.Services.AddSwaggerServices();
+builder.Services.AddSwaggerServices(builder.Configuration);
 
-// Serilog configuration
+builder.AddMicroserviceTelemetry("Customer.Api");
+
 builder.Host.UseSerilog(Serilogger.ConfigureLogger);
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 app.UseSerilogRequestLogging();
 
-// Enable Swagger in all environments
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
@@ -27,18 +28,17 @@ app.UseSwaggerUI(c =>
     c.RoutePrefix = "swagger";
 });
 
+app.UseMicroserviceJwtAuthentication(app.Configuration);
 app.UseHttpsRedirection();
-
 app.UseAuthorization();
 
 app.MapControllers();
 
-// Health Checks
 app.MapHealthChecks("/health", new HealthCheckOptions
 {
     Predicate = _ => true,
     ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
-});
+}).AllowAnonymous();
 
 Log.Information("Starting Customer.Api Service");
 

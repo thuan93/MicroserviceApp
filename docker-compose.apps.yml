@@ -1,0 +1,97 @@
+# Application services + Jaeger. Use with infra compose files, e.g.:
+#   docker-compose -f docker-compose.yml -f docker-compose.override.yml -f docker-compose.apps.yml up -d --build
+#
+# Gateway: http://localhost:5293  Jaeger UI: http://localhost:16686
+
+services:
+  jaeger:
+    image: jaegertracing/all-in-one:1.62
+    container_name: jaeger
+    restart: unless-stopped
+    ports:
+      - "16686:16686"
+      - "4317:4317"
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+
+  product-api:
+    build:
+      context: .
+      dockerfile: src/Services/Product.Api/Dockerfile
+    container_name: product-api
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+    depends_on:
+      - productdb
+      - rabbitmq
+
+  customer-api:
+    build:
+      context: .
+      dockerfile: src/Services/Customer.Api/Dockerfile
+    container_name: customer-api
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+    depends_on:
+      - customerdb
+      - rabbitmq
+
+  basket-api:
+    build:
+      context: .
+      dockerfile: src/Services/Basket.Api/Dockerfile
+    container_name: basket-api
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+    depends_on:
+      - basketdb
+
+  ordering-api:
+    build:
+      context: .
+      dockerfile: src/Services/Ordering.Api/Dockerfile
+    container_name: ordering-api
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+    depends_on:
+      - orderdb
+      - rabbitmq
+
+  inventory-api:
+    build:
+      context: .
+      dockerfile: src/Services/Inventory.Api/Dockerfile
+    container_name: inventory-api
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+    depends_on:
+      - inventorydb
+      - rabbitmq
+
+  ocelot-apigw:
+    build:
+      context: .
+      dockerfile: src/ApiGateways/OcelotApiGw/Dockerfile
+    container_name: ocelot-apigw
+    restart: unless-stopped
+    ports:
+      - "5293:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+    depends_on:
+      - product-api
+      - customer-api
+      - basket-api
+      - ordering-api
+      - inventory-api

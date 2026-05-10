@@ -6,4 +6,17 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Ocelot" Version="24.1.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\BuildingBlocks\AspNetCore.Extensions\AspNetCore.Extensions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="ocelot.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="ocelot.Docker.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

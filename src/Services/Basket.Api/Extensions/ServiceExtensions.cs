@@ -1,3 +1,4 @@
+using AspNetCore.Extensions;
 using Basket.Api.Repositories;
 using Basket.Api.Repositories.Interfaces;
 using StackExchange.Redis;
@@ -26,12 +27,13 @@ public static class ServiceExtensions
         return services;
     }
 
-    public static IServiceCollection AddSwaggerServices(this IServiceCollection services)
+    public static IServiceCollection AddSwaggerServices(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddEndpointsApiExplorer();
         services.AddSwaggerGen(c =>
         {
             c.SwaggerDoc("v1", new() { Title = "Basket.Api", Version = "v1" });
+            c.AddJwtBearerSecurity(configuration);
         });
 
         return services;
