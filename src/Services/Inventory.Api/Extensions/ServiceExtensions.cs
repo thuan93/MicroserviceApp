@@ -1,3 +1,4 @@
+using AspNetCore.Extensions;
 using Inventory.Api.Consumers;
 using Inventory.Api.Repositories;
 using Inventory.Api.Repositories.Interfaces;
@@ -48,12 +49,13 @@ public static class ServiceExtensions
         return services;
     }
 
-    public static IServiceCollection AddSwaggerServices(this IServiceCollection services)
+    public static IServiceCollection AddSwaggerServices(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddEndpointsApiExplorer();
         services.AddSwaggerGen(c =>
         {
             c.SwaggerDoc("v1", new() { Title = "Inventory.Api", Version = "v1" });
+            c.AddJwtBearerSecurity(configuration);
         });
 
         return services;
