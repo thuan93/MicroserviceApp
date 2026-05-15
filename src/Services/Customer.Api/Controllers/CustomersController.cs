@@ -19,11 +19,15 @@ public class CustomersController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<ApiResponse<IEnumerable<CustomerDto>>>> GetAll()
+    public async Task<ActionResult<ApiResponse<IEnumerable<CustomerDto>>>> GetAll([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 20)
     {
-        _logger.LogInformation("Getting all customers");
-        var customers = await _customerRepository.GetAllCustomersAsync();
-        return Ok(ApiResponse<IEnumerable<CustomerDto>>.SuccessResult(customers, "Customers retrieved successfully"));
+        _logger.LogInformation("Getting customers page {PageIndex} with size {PageSize}", pageIndex, pageSize);
+
+        if (pageSize > 100) pageSize = 100;
+        if (pageIndex < 1) pageIndex = 1;
+
+        var result = await _customerRepository.GetCustomersPagedAsync(pageIndex, pageSize);
+        return Ok(ApiResponse<PaginatedResult<CustomerDto>>.SuccessResult(result, "Customers retrieved successfully"));
     }
 
     [HttpGet("{id}")]

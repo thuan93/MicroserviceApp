@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Product.Api.DTOs;
 using Product.Api.Persistence;
 using Product.Api.Repositories.Interfaces;
+using Shared.DTOs;
 
 namespace Product.Api.Repositories;
 
@@ -37,6 +38,33 @@ public class ProductRepository : RepositoryBase<Entities.Product, ProductContext
                 SupplierId = p.SupplierId
             })
             .ToListAsync();
+    }
+
+    public async Task<PaginatedResult<ProductDto>> GetProductsPagedAsync(int pageIndex, int pageSize)
+    {
+        var query = _context.Products
+            .Include(p => p.Category)
+            .Include(p => p.Supplier);
+
+        var totalCount = await query.CountAsync();
+
+        var items = await query
+            .Skip((pageIndex - 1) * pageSize)
+            .Take(pageSize)
+            .Select(p => new ProductDto
+            {
+                Id = p.Id,
+                Name = p.Name,
+                Description = p.Description,
+                Price = p.Price,
+                StockQuantity = p.StockQuantity,
+                CategoryId = p.CategoryId,
+                CategoryName = p.Category.Name,
+                SupplierId = p.SupplierId
+            })
+            .ToListAsync();
+
+        return new PaginatedResult<ProductDto>(items, totalCount, pageIndex, pageSize);
     }
 
     public async Task<ProductDto?> GetProductByIdAsync(long id)

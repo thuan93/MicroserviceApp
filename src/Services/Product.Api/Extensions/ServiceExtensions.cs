@@ -1,4 +1,5 @@
 using AspNetCore.Extensions;
+using FluentValidation;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Product.Api.Persistence;
@@ -31,6 +32,9 @@ public static class ServiceExtensions
                 });
             });
         });
+
+        // FluentValidation
+        services.AddValidatorsFromAssembly(typeof(ServiceExtensions).Assembly);
 
         // Health Checks
         services.AddHealthChecks()

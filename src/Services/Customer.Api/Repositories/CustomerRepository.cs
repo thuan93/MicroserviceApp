@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Customer.Api.DTOs;
 using Customer.Api.Persistence;
 using Customer.Api.Repositories.Interfaces;
+using Shared.DTOs;
 
 namespace Customer.Api.Repositories;
 
@@ -36,6 +37,31 @@ public class CustomerRepository : RepositoryBase<Entities.Customer, CustomerCont
                 CreatedDate = c.CreatedDate
             })
             .ToListAsync();
+    }
+
+    public async Task<PaginatedResult<CustomerDto>> GetCustomersPagedAsync(int pageIndex, int pageSize)
+    {
+        var query = _context.Customers.AsQueryable();
+        var totalCount = await query.CountAsync();
+
+        var items = await query
+            .Skip((pageIndex - 1) * pageSize)
+            .Take(pageSize)
+            .Select(c => new CustomerDto
+            {
+                Id = c.Id,
+                FirstName = c.FirstName,
+                LastName = c.LastName,
+                Email = c.Email,
+                Phone = c.Phone,
+                Address = c.Address,
+                City = c.City,
+                Country = c.Country,
+                CreatedDate = c.CreatedDate
+            })
+            .ToListAsync();
+
+        return new PaginatedResult<CustomerDto>(items, totalCount, pageIndex, pageSize);
     }
 
     public async Task<CustomerDto?> GetCustomerByIdAsync(long id)
