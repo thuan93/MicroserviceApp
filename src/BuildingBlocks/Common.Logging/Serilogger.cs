@@ -1,5 +1,7 @@
-﻿using Microsoft.Extensions.Hosting;
+﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 using Serilog;
+using Serilog.Sinks.Elasticsearch;
 
 namespace Common.Logging;
 
@@ -19,5 +21,15 @@ public static class Serilogger
             .Enrich.WithProperty("Environment", environmentName)
             .Enrich.WithProperty("Application", applicationName)
             .ReadFrom.Configuration(context.Configuration);
+
+        var elasticsearchUrl = context.Configuration.GetValue<string>("Elasticsearch:Url");
+        if (!string.IsNullOrEmpty(elasticsearchUrl))
+        {
+            config.WriteTo.Elasticsearch(new ElasticsearchSinkOptions(new Uri(elasticsearchUrl))
+            {
+                AutoRegisterTemplate = true,
+                IndexFormat = $"{applicationName.ToLower().Replace(".", "-")}-{environmentName.ToLower()}-{DateTime.UtcNow:yyyy-MM-dd}"
+            });
+        }
     };
 }

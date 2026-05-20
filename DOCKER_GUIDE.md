@@ -1,392 +1,1037 @@
-# H??ng D?n S? D?ng Docker Compose
+# Hướng Dẫn Sử Dụng Docker Compose Cho MicroserviceApp
 
-## M�i Tr??ng Development (Kh�ng d�ng Portainer)
-
-S? d?ng giao di?n Docker Desktop ?? qu?n l� containers.
-
-```sh
-# Kh?i ??ng t?t c? services
-docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d
-
-# Xem logs
-docker-compose -f docker-compose.yml -f docker-compose.dev.yml logs -f
-
-# D?ng t?t c? services
-docker-compose -f docker-compose.yml -f docker-compose.dev.yml down
-
-# Build l?i v� kh?i ??ng
-docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
-```
-
-**Truy c?p c�c services:**
-- RabbitMQ Management: http://localhost:15672 (guest/guest)
-- Kibana: http://localhost:5601
-- Elasticsearch: http://localhost:9200
+> **Lưu ý:** Dự án này sử dụng Docker Compose v2. Tất cả các lệnh bên dưới dùng `docker compose` thay vì `docker-compose`.
 
 ---
 
-## M�i Tr??ng Production (C� Portainer)
+## Mục Lục
 
-### Thi?t l?p l?n ??u:
+1. [Môi Trường Development (Không Portainer)](#1-môi-trường-development-không-portainer)
+2. [Môi Trường Production (Có Portainer)](#2-môi-trường-production-có-portainer)
+3. [Tính Năng Của Portainer Trong Production](#3-tính-năng-của-portainer-trong-production)
+4. [Các Thực Hành Bảo Mật](#4-các-thực-hành-bảo-mật)
+5. [So Sánh Development vs Production](#5-so-sánh-development-vs-production)
+6. [Xử Lý Sự Cố](#6-xử-lý-sự-cố)
+7. [Chiến Lược Backup](#7-chiến-lược-backup)
+8. [Chuyển Từ Development Sang Production](#8-chuyển-từ-development-sang-production)
+9. [Giải Thích Chi Tiết Các Lệnh](#9-giải-thích-chi-tiết-các-lệnh)
+10. [Các Lỗi Thường Gặp](#10-các-lỗi-thường-gặp)
+11. [Mẹo Hữu Ích](#11-mẹo-hữu-ích)
+12. [Checklist Trước Khi Deploy Production](#12-checklist-trước-khi-deploy-production)
+
+---
+
+## 1. Môi Trường Development (Không Portainer)
+
+### 1.1. Giới Thiệu
+
+Môi trường Development sử dụng **Docker Desktop** để quản lý containers. Không cần Portainer vì Docker Desktop đã cung cấp giao diện đồ họa trực quan cho các tác vụ hàng ngày.
+
+Các file Docker Compose:
+- `docker-compose.yml` — Cấu hình base (databases, infrastructure)
+- `docker-compose.dev.yml` — Cấu hình development (override)
+- `docker-compose.apps.yml` — Cấu hình application services (.NET APIs + Jaeger)
+- `docker-compose.override.yml` — Cấu hình override mặc định
+
+### 1.2. Các Lệnh Cơ Bản
 
 ```sh
-# 1. Copy file template bi?n m�i tr??ng
+# Khởi động databases + infrastructure
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+
+# Khởi động databases + infrastructure + application services
+docker compose -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.apps.yml up -d --build
+
+# Xem logs real-time của tất cả services
+docker compose -f docker-compose.yml -f docker-compose.dev.yml logs -f
+
+# Xem logs của một service cụ thể
+docker compose -f docker-compose.yml -f docker-compose.dev.yml logs -f orderdb
+
+# Dừng tất cả services (giữ volumes)
+docker compose -f docker-compose.yml -f docker-compose.dev.yml down
+
+# Dừng và xóa volumes (mất dữ liệu databases)
+docker compose -f docker-compose.yml -f docker-compose.dev.yml down -v
+
+# Build lại và khởi động
+docker compose -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.apps.yml up -d --build
+
+# Liệt kê containers đang chạy
+docker ps
+
+# Xem trạng thái tất cả containers
+docker compose -f docker-compose.yml -f docker-compose.dev.yml ps
+```
+
+### 1.3. Cổng Truy Cập Các Services (Development)
+
+| Service               | URL                                       | Thông tin đăng nhập |
+|-----------------------|-------------------------------------------|---------------------|
+| RabbitMQ Management   | http://localhost:15672                     | guest / guest       |
+| Kibana                | http://localhost:5601                      | —                   |
+| Elasticsearch         | http://localhost:9200                      | —                   |
+| SQL Server (orderdb)  | `localhost,1435`                           | sa / Passw0rd!      |
+| MySQL (productdb)     | `localhost:3307`                           | root / Passw0rd!    |
+| PostgreSQL (customerdb)| `localhost:5433`                          | admin / admin1234   |
+| Redis (basketdb)      | `localhost:6379`                           | —                   |
+| MongoDB (inventorydb) | `localhost:27017`                          | —                   |
+| API Gateway           | http://localhost:5293                      | —                   |
+| Jaeger UI             | http://localhost:16686                     | —                   |
+
+### 1.4. Development Workflow
+
+```sh
+# 1. Clone repository và cd vào thư mục dự án
+git clone <repo-url> MicroserviceApp
+cd MicroserviceApp
+
+# 2. Khởi động cơ sở dữ liệu và hạ tầng
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+
+# 3. Chạy ứng dụng .NET từ IDE (Visual Studio / Rider)
+#    Hoặc chạy trực tiếp:
+dotnet run --project src/Services/Product.Api
+
+# 4. Khi cần chạy mọi thứ trong container:
+docker compose -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.apps.yml up -d --build
+```
+
+---
+
+## 2. Môi Trường Production (Có Portainer)
+
+### 2.1. Thiết Lập Lần Đầu
+
+```sh
+# Bước 1: Clone dự án lên server
+git clone <repo-url> /opt/microservices
+cd /opt/microservices
+
+# Bước 2: Copy file template biến môi trường
 cp .env.prod.example .env.prod
 
-# 2. Ch?nh s?a .env.prod v?i m?t kh?u th?c t?
+# Bước 3: Chỉnh sửa .env.prod với mật khẩu thực tế
+# Dùng nano, vim, hoặc bất kỳ editor nào
 nano .env.prod
 
-# 3. Kh?i ??ng services
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod up -d
+# Bước 4: Khởi động tất cả services
+docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod up -d
 
-# 4. Truy c?p Portainer (l?n ??u ti�n)
-# M?: https://ip-server-cua-ban:9443
-# T?o t�i kho?n admin
-# K?t n?i v?i Docker environment local
+# Bước 5: Kiểm tra trạng thái
+docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod ps
+
+# Bước 6: Thiết lập Portainer lần đầu
+# Mở trình duyệt: https://<IP-SERVER>:9443
+# Tạo tài khoản admin
+# Chọn "Docker Standalone" → kết nối với local Docker environment
 ```
 
-### V?n h�nh h�ng ng�y:
+### 2.2. Vận Hành Hàng Ngày
 
 ```sh
-# Xem t?t c? containers
+# Xem tất cả containers đang chạy
 docker ps
 
-# Xem logs
-docker logs -f orderdb
+# Xem logs của một service
+docker logs -f product-api
 
-# Kh?i ??ng l?i m?t service
-docker restart orderdb
+# Xem logs với timestamp và giới hạn dòng
+docker logs --tail 100 -f --timestamps product-api
 
-# C?p nh?t services
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod pull
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod up -d
+# Khởi động lại một service
+docker restart product-api
+
+# Dừng một service
+docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod stop product-api
+
+# Xóa và khởi tạo lại một service
+docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod rm -sf product-api
+docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod up -d product-api
+
+# Cập nhật images và khởi động lại
+docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod pull
+docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod up -d
+
+# Dọn dẹp images cũ không dùng
+docker image prune -f
 ```
 
-**Truy c?p c�c services:**
-- Portainer: https://ip-server-cua-ban:9443
-- RabbitMQ Management: http://ip-server-cua-ban:15672 (d�ng th�ng tin t? .env.prod)
-- Kibana: http://ip-server-cua-ban:5601
-- Elasticsearch: http://ip-server-cua-ban:9200
+### 2.3. Cổng Truy Cập Các Services (Production)
+
+| Service               | URL                                             | Ghi chú                        |
+|-----------------------|-------------------------------------------------|--------------------------------|
+| Portainer             | https://<IP-SERVER>:9443                        | HTTPS bắt buộc                 |
+| RabbitMQ Management   | http://<IP-SERVER>:15672                        | Dùng thông tin từ .env.prod    |
+| Kibana                | http://<IP-SERVER>:5601                         | Dùng elastic user + password   |
+| Elasticsearch         | http://<IP-SERVER>:9200                         | Có xpack security              |
+| SQL Server (orderdb)  | `<IP-SERVER>,1435`                              | Dùng mật khẩu từ .env.prod     |
+| MySQL (productdb)     | `<IP-SERVER>:3306`                              | Dùng mật khẩu từ .env.prod     |
+| PostgreSQL (customerdb)| `<IP-SERVER>:5433`                             | Dùng thông tin từ .env.prod    |
+| Redis (basketdb)      | `<IP-SERVER>:6379`                              | Yêu cầu password               |
+| MongoDB (inventorydb) | `<IP-SERVER>:27017`                             | Yêu cầu username + password    |
+| API Gateway           | http://<IP-SERVER>:5293                         | —                               |
+
+### 2.4. Sử Dụng Portainer Để Quản Lý
+
+1. **Dashboard:** Xem tổng quan tài nguyên (CPU, RAM, disk)
+2. **Containers:** Start/Stop/Restart, xem logs, attach console
+3. **Images:** Quản lý Docker images, pull/push
+4. **Volumes:** Xem dung lượng, backup dữ liệu
+5. **Networks:** Kiểm tra cấu hình mạng giữa các containers
+6. **Stacks:** Deploy và quản lý stacks từ docker-compose files
 
 ---
 
-## T�nh N?ng C?a Portainer Trong Production
+## 3. Tính Năng Của Portainer Trong Production
 
-### 1. Qu?n L� Containers
-- Kh?i ??ng/D?ng/Kh?i ??ng l?i containers kh�ng c?n SSH
-- Xem th?ng k� th?i gian th?c (CPU, Memory, Network)
-- Truy c?p console c?a container
-- Xem v� t?i logs
+### 3.1. Quản Lý Containers
 
-### 2. ?a Ng??i D�ng
-- T?o users v?i c�c vai tr� kh�c nhau:
-  - **Admin**: To�n quy?n truy c?p
-  - **Ch? ??c**: Ch? xem containers, logs
-  - **H? tr?**: Ch? kh?i ??ng l?i containers
+- **Khởi động/Dừng/Khởi động lại** containers mà không cần SSH vào server
+- **Xem thống kê thời gian thực** (CPU, Memory, Network I/O)
+- **Truy cập console** của container để debug
+- **Xem và tải logs** với filter theo thời gian
+- **Tạo container mới** với giao diện web trực quan
 
-### 3. Truy C?p T? Xa
-- Truy c?p t? b?t k? ?�u qua HTTPS
-- Giao di?n web th�n thi?n v?i mobile
-- Kh�ng c?n VPN (n?u ???c b?o m?t ?�ng c�ch)
+### 3.2. Đa Người Dùng
 
-### 4. Gi�m S�t & C?nh B�o
-- Thi?t l?p webhooks khi container l?i
-- Gi�m s�t m?c s? d?ng t�i nguy�n
-- Nh?n th�ng b�o khi containers d?ng
+Portainer hỗ trợ tạo nhiều users với các vai trò khác nhau:
 
-### 5. Qu?n L� Stack
-- Deploy stacks m?i t? Git repositories
-- C?p nh?t stacks ch? v?i m?t click
-- Quay l?i phi�n b?n tr??c ?�
+- **Administrator:** Toàn quyền truy cập, quản lý users, endpoints
+- **Operator:** Quản lý containers, images, volumes nhưng không thay đổi cấu hình hệ thống
+- **Read-only user:** Chỉ xem containers, logs — không thể thực hiện thay đổi
+- **Helpdesk:** Giới hạn chỉ được khởi động lại containers
 
----
+### 3.3. Truy Cập Từ Xa
 
-## C�c Th?c H�nh B?o M?t T?t Nh?t
+- Giao diện web HTTPS an toàn
+- Truy cập từ bất kỳ thiết bị nào (desktop, mobile, tablet)
+- Portainer Agent cho phép quản lý nhiều Docker hosts từ một giao diện
+- Không cần VPN (nếu firewall được cấu hình đúng cách)
 
-### Cho Portainer Trong Production:
+### 3.4. Giám Sát & Cảnh Báo
 
-1. **Ch? d�ng HTTPS**
-   ```yaml
-   ports:
-     - "9443:9443"  # HTTPS
-     # Kh�ng bao gi? m? port 9000 (HTTP) trong production
-   ```
+- **Webhooks:** Thiết lập webhooks khi container gặp lỗi
+- **Resource monitoring:** Giám sát mức sử dụng CPU, RAM, disk
+- **Health checks:** Kiểm tra trạng thái containers định kỳ
+- **Notifications:** Nhận thông báo qua email, Slack, Teams khi containers dừng
 
-2. **M?t kh?u admin m?nh**
-   - T?i thi?u 12 k� t?
-   - K?t h?p ch? hoa, ch? th??ng, s? v� k� t? ??c bi?t
+### 3.5. Quản Lý Stacks
 
-3. **H?n ch? truy c?p**
-   ```sh
-   # D�ng firewall ?? gi?i h?n truy c?p
-   sudo ufw allow from IP_CUA_BAN to any port 9443
-   ```
-
-4. **Docker socket ch? ??c** (n?u c� th?)
-   ```yaml
-   volumes:
-     - /var/run/docker.sock:/var/run/docker.sock:ro
-   ```
-
-5. **C?p nh?t th??ng xuy�n**
-   ```sh
-   docker pull portainer/portainer-ce:latest
-   docker-compose -f docker-compose.prod.yml up -d portainer
-   ```
-
-6. **B?t audit logs**
-   - Theo d�i ai l�m g� v� khi n�o
-   - C� s?n trong Portainer Business Edition
+- **Deploy stacks** từ docker-compose files trực tiếp qua giao diện web
+- **Cập nhật stacks** chỉ với một cú click
+- **Rollback** về phiên bản trước đó nếu cần
+- **Quản lý biến môi trường** cho từng stack
 
 ---
 
-## So S�nh: Development vs Production
+## 4. Các Thực Hành Bảo Mật
 
-| T�nh N?ng | Development | Production |
-|-----------|-------------|------------|
-| **C�ng C? Qu?n L�** | Docker Desktop | Portainer |
-| **Ch�nh S�ch Kh?i ??ng L?i** | unless-stopped | always |
-| **M?t Kh?u** | Hardcode (??n gi?n) | Bi?n m�i tr??ng (ph?c t?p) |
-| **Logging** | M?c ??nh | Gi?i h?n k�ch th??c + xoay v�ng |
-| **HTTPS** | Kh�ng c?n | B?t bu?c |
-| **Gi�m S�t** | T�y ch?n | Thi?t y?u |
-| **Backups** | Kh�ng quan tr?ng | T? ??ng h�a |
+### 4.1. Bảo Mật Portainer
 
----
+```yaml
+# docker-compose.prod.yml — Cấu hình Portainer an toàn
+portainer:
+  image: portainer/portainer-ce:latest
+  container_name: portainer
+  restart: always
+  security_opt:
+    - no-new-privileges:true     # Ngăn leo thang đặc quyền
+  ports:
+    - "9443:9443"                # CHỈ mở HTTPS — KHÔNG mở port 9000
+  volumes:
+    - /var/run/docker.sock:/var/run/docker.sock:ro   # Chế độ read-only!
+    - portainer_data:/data
+  command: --sslcert /data/cert.pem --sslkey /data/key.pem
+```
 
-## X? L� S? C?
+### 4.2. Bảo Mật Databases
 
-### Kh�ng truy c?p ???c Portainer:
+| Database    | Biện pháp bảo mật trong Production                 |
+|-------------|----------------------------------------------------|
+| SQL Server  | Mật khẩu SA từ biến môi trường, không hardcode     |
+| MySQL       | Mật khẩu root từ biến môi trường                   |
+| PostgreSQL  | User + password từ biến môi trường                 |
+| Redis       | Yêu cầu password qua `--requirepass`               |
+| MongoDB     | Authentication bắt buộc (username + password)       |
+| Elasticsearch| xpack.security.enabled=true, có password           |
+
+### 4.3. Biến Môi Trường
 
 ```sh
-# Ki?m tra container c� ?ang ch?y kh�ng
-docker ps | grep portainer
+# KHÔNG BAO GIỜ commit file .env.prod vào Git!
+# File .env.prod.example là template an toàn để commit
 
-# Ki?m tra logs
+# Đảm bảo file .env.prod có quyền hạn chế
+chmod 600 .env.prod
+
+# Sử dụng --env-file flag khi chạy docker compose
+docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod up -d
+```
+
+### 4.4. Firewall & Network
+
+```sh
+# Chỉ mở các port cần thiết (ví dụ trên Ubuntu với ufw)
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+
+# SSH
+sudo ufw allow 22/tcp
+
+# Portainer (giới hạn IP nguồn nếu có thể)
+sudo ufw allow from <IP-MẠNG-NỘI-BỘ> to any port 9443
+
+# API Gateway
+sudo ufw allow 5293/tcp
+
+# Giới hạn truy cập databases — chỉ cho phép từ internal Docker network
+# KHÔNG mở port databases ra ngoài Internet trong production!
+
+# Bảo vệ RabbitMQ
+sudo ufw allow from 127.0.0.1 to any port 15672
+
+sudo ufw enable
+```
+
+### 4.5. Log Rotation
+
+```yaml
+# Cấu hình trong docker-compose.prod.yml
+logging:
+  driver: "json-file"
+  options:
+    max-size: "10m"       # Mỗi file log tối đa 10MB
+    max-file: "3"          # Chỉ giữ 3 file log gần nhất
+```
+
+### 4.6. Cập Nhật Thường Xuyên
+
+```sh
+# Cập nhật Portainer
+docker compose -f docker-compose.yml -f docker-compose.prod.yml pull portainer
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d portainer
+
+# Cập nhật tất cả images
+docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod pull
+docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod up -d
+
+# Kiểm tra images cũ cần dọn
+docker image ls
+docker image prune -a -f
+```
+
+---
+
+## 5. So Sánh Development vs Production
+
+| Tiêu Chí              | Development                        | Production                             |
+|-----------------------|------------------------------------|----------------------------------------|
+| **Công cụ quản lý**  | Docker Desktop                     | Portainer (HTTPS)                     |
+| **Chính sách restart**| `unless-stopped`                  | `always`                              |
+| **Mật khẩu**         | Hardcode (đơn giản cho dev)        | Biến môi trường (.env.prod)           |
+| **Logging**          | Mặc định (không giới hạn)          | Giới hạn kích thước + xoay vòng        |
+| **Tài nguyên ES**    | `ES_JAVA_OPTS=-Xms256m -Xmx256m`   | `ES_JAVA_OPTS=-Xms1g -Xmx1g`          |
+| **HTTPS**            | Không cần                          | Bắt buộc (Portainer 9443)             |
+| **Elasticsearch security**| Tắt                            | Bật (xpack.security)                  |
+| **Redis password**   | Không yêu cầu                      | Bắt buộc (--requirepass)              |
+| **MongoDB auth**     | Không yêu cầu                      | username + password từ .env.prod       |
+| **Giám sát**         | Docker Desktop dashboard           | Portainer + Kibana                     |
+| **Backup**           | Không quan trọng                   | Tự động hóa, kiểm tra định kỳ          |
+| **Ports**            | Ports tránh xung đột (3307, 5433)  | Ports mặc định (3306, 5432)            |
+
+---
+
+## 6. Xử Lý Sự Cố
+
+### 6.1. Không Truy Cập Được Portainer
+
+```sh
+# Kiểm tra container có đang chạy không
+docker ps | findstr portainer
+
+# Kiểm tra logs
 docker logs portainer
 
-# Ki?m tra firewall
+# Kiểm tra firewall (trên Linux server)
 sudo ufw status
 
-# Kh?i ??ng l?i Portainer
+# Kiểm tra container có listen đúng port không
+docker port portainer
+
+# Khởi động lại Portainer
 docker restart portainer
+
+# Nếu vẫn không được, kiểm tra certificate
+docker exec portainer ls -la /data/cert.pem /data/key.pem
 ```
 
-### Qu�n m?t kh?u admin Portainer:
+### 6.2. Quên Mật Khẩu Admin Portainer
 
 ```sh
-# Reset m?t kh?u admin
+# Dừng Portainer
 docker stop portainer
+
+# Chạy helper reset password
 docker run --rm -v portainer_data:/data portainer/helper-reset-password
 
-# Kh?i ??ng l?i Portainer
+# Khởi động lại Portainer
 docker start portainer
+
+# Lấy mật khẩu mới từ output của lệnh helper-reset-password
 ```
 
----
-
-## Chi?n L??c Backup
-
-### Databases:
+### 6.3. Container Không Khởi Động Được
 
 ```sh
-# SQL Server
-docker exec orderdb /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "Passw0rd!" -Q "BACKUP DATABASE OrderDb TO DISK = '/var/opt/mssql/backup/OrderDb.bak'"
+# Xem logs để biết lỗi
+docker logs product-api
 
-# MySQL
-docker exec productdb mysqldump -u root -pPassw0rd! --all-databases > backup.sql
+# Xem chi tiết container
+docker inspect product-api
 
-# PostgreSQL
-docker exec customerdb pg_dump -U admin CustomerDb > customerdb_backup.sql
+# Kiểm tra resource (có thể hết RAM/disk)
+docker stats
 
-# MongoDB
-docker exec inventorydb mongodump --out /backup
+# Kiểm tra volume có đủ dung lượng không
+docker system df
 
-# Redis (n?u b?t persistence)
-docker exec basketdb redis-cli --rdb /data/dump.rdb
+# Thử restart với timeout dài hơn
+docker restart -t 30 product-api
 ```
 
-### D? li?u Portainer:
+### 6.4. Không Kết Nối Được Database
 
 ```sh
-# Backup c?u h�nh Portainer
-docker run --rm -v portainer_data:/data -v $(pwd):/backup alpine tar czf /backup/portainer-backup.tar.gz /data
+# Kiểm tra container database có chạy không
+docker ps | findstr orderdb
+
+# Kiểm tra network
+docker network inspect microservices
+
+# Kiểm tra container có trong đúng network không
+docker inspect orderdb | findstr "NetworkMode"
+
+# Test kết nối từ container khác
+docker exec -it product-api bash
+# Bên trong container:
+curl http://orderdb:1433
+# Hoặc telnet orderdb 1433
+
+# Kiểm tra xem service application có depends_on đúng không
 ```
 
----
+### 6.5. Port Đã Được Sử Dụng
 
-## Chuy?n T? Development Sang Production
-
-1. **Test local tr??c:**
-   ```sh
-   docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
-   ```
-
-2. **Chuy?n l�n production server:**
-   ```sh
-   scp -r src/ user@production-server:/opt/microservices/
-   ```
-
-3. **Thi?t l?p bi?n m�i tr??ng tr�n server**
-
-4. **Kh?i ??ng services:**
-   ```sh
-   cd /opt/microservices/src
-   docker-compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod up -d
-   ```
-
-5. **Truy c?p Portainer v� ki?m tra t?t c? containers ?ang ch?y**
-
----
-
-## Tham Kh?o Nhanh
-
-### Development:
-```sh
-# Alias ?? ti?n l?i
-alias dc-dev='docker-compose -f docker-compose.yml -f docker-compose.dev.yml'
-
-# C�ch d�ng
-dc-dev up -d
-dc-dev logs -f orderdb
-dc-dev down
-```
-
-### Production:
-```sh
-# Alias
-alias dc-prod='docker-compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod'
-
-# C�ch d�ng
-dc-prod up -d
-dc-prod logs -f orderdb
-dc-prod down
-```
-
-### Truy C?p Portainer:
-- Development: ? Kh�ng c?n (d�ng Docker Desktop)
-- Production: ? https://ip-server-cua-ban:9443
-
----
-
-## Gi?i Th�ch Chi Ti?t C�c L?nh
-
-### 1. Kh?i ??ng services:
-```sh
-docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d
-```
-- `-f docker-compose.yml`: S? d?ng file c?u h�nh base
-- `-f docker-compose.dev.yml`: K?t h?p v?i file c?u h�nh development
-- `up`: Kh?i ??ng containers
-- `-d`: Ch?y ? ch? ?? background (detached mode)
-
-### 2. Xem logs:
-```sh
-docker-compose logs -f orderdb
-```
-- `logs`: Xem logs c?a container
-- `-f`: Follow mode (xem real-time)
-- `orderdb`: T�n container c? th?
-
-### 3. D?ng services:
-```sh
-docker-compose down
-```
-- `down`: D?ng v� x�a containers (nh?ng gi? volumes)
-
-### 4. Xem tr?ng th�i:
-```sh
-docker ps
-```
-- Hi?n th? danh s�ch c�c containers ?ang ch?y
-
----
-
-## C�c L?i Th??ng G?p
-
-### L?i 1: Port ?� ???c s? d?ng
 ```
 Error: Bind for 0.0.0.0:1435 failed: port is already allocated
 ```
 
-**Gi?i ph�p:**
 ```sh
-# Ki?m tra process ?ang d�ng port
+# Kiểm tra process đang dùng port
 netstat -ano | findstr :1435
 
-# Ho?c ??i port trong docker-compose file
-ports:
-  - "1436:1433"  # ??i t? 1435 sang 1436
+# Tìm PID và dừng process
+taskkill /PID <PID> /F
+
+# Hoặc đổi port trong docker-compose file
+#   ports:
+#     - "1436:1433"   # Đổi từ 1435 sang 1436
 ```
 
-### L?i 2: Container kh�ng kh?i ??ng ???c
+### 6.6. Hết Dung Lượng Đĩa
+
 ```sh
-# Xem logs ?? bi?t l?i
-docker logs orderdb
+# Kiểm tra dung lượng Docker đang dùng
+docker system df
 
-# Xem chi ti?t container
-docker inspect orderdb
-```
+# Dọn dẹp
+docker container prune -f        # Xóa containers đã dừng
+docker image prune -f            # Xóa dangling images
+docker volume prune -f           # Xóa volumes không dùng
+docker builder prune -f          # Xóa build cache
 
-### L?i 3: Kh�ng k?t n?i ???c database
-```sh
-# Ki?m tra container c� ch?y kh�ng
-docker ps | grep orderdb
-
-# Ki?m tra network
-docker network inspect microservices
-
-# Test k?t n?i
-docker exec -it orderdb bash
+# CẢNH BÁO: Chỉ chạy khi chắc chắn
+docker system prune -a --volumes -f
 ```
 
 ---
 
-## M?o H?u �ch
+## 7. Chiến Lược Backup
 
-### 1. Xem resource usage:
+### 7.1. Backup Databases
+
 ```sh
-docker stats
+# SQL Server
+docker exec orderdb /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "$ORDERDB_SA_PASSWORD" -Q "BACKUP DATABASE OrderDb TO DISK = '/var/opt/mssql/backup/OrderDb_$(date +%Y%m%d).bak'"
+
+# MySQL
+docker exec productdb mysqldump -u root -p"$PRODUCTDB_ROOT_PASSWORD" --all-databases --result-file=/backup/mysql_full_$(date +%Y%m%d).sql
+
+# PostgreSQL
+docker exec customerdb pg_dump -U "$CUSTOMERDB_USER" CustomerDb > /backup/customerdb_$(date +%Y%m%d).sql
+
+# MongoDB
+docker exec inventorydb mongodump --username "$MONGO_USERNAME" --password "$MONGO_PASSWORD" --out /backup/mongo_$(date +%Y%m%d)
+
+# Redis (nếu bật persistence)
+docker exec basketdb redis-cli --rdb /data/dump.rdb
+cp /var/lib/docker/volumes/microservices_redis_data/_data/dump.rdb /backup/redis_$(date +%Y%m%d).rdb
 ```
 
-### 2. D?n d?p system:
+### 7.2. Backup Dữ Liệu Portainer
+
 ```sh
-# X�a containers ?� d?ng
-docker container prune
+# Backup cấu hình Portainer (users, endpoints, stacks)
+docker run --rm -v portainer_data:/data -v $(pwd):/backup alpine tar czf /backup/portainer-backup-$(date +%Y%m%d).tar.gz /data
 
-# X�a images kh�ng d�ng
-docker image prune
+# Restore Portainer
+docker stop portainer
+docker run --rm -v portainer_data:/data -v $(pwd):/backup alpine tar xzf /backup/portainer-backup-YYYYMMDD.tar.gz -C /
+docker start portainer
+```
 
-# X�a volumes kh�ng d�ng
-docker volume prune
+### 7.3. Backup Docker Volumes
 
-# X�a t?t c? (C?NH B�O: S? m?t d? li?u!)
+```sh
+# Liệt kê tất cả volumes
+docker volume ls
+
+# Backup một volume
+docker run --rm -v sqlserver_data:/source -v $(pwd):/backup alpine tar czf /backup/sqlserver_data-$(date +%Y%m%d).tar.gz -C /source .
+
+# Restore volume
+docker run --rm -v sqlserver_data:/destination -v $(pwd):/backup alpine tar xzf /backup/sqlserver_data-YYYYMMDD.tar.gz -C /destination
+```
+
+### 7.4. Script Backup Tự Động
+
+Tạo file `backup.sh` trên server production:
+
+```sh
+#!/bin/bash
+# Backup script cho MicroserviceApp
+set -e
+
+BACKUP_DIR="/backup/microservices"
+DATE=$(date +%Y%m%d_%H%M%S)
+mkdir -p "$BACKUP_DIR/$DATE"
+
+# Load biến môi trường
+source /opt/microservices/.env.prod
+
+# Backup SQL Server
+docker exec orderdb /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "$ORDERDB_SA_PASSWORD" -Q "BACKUP DATABASE OrderDb TO DISK = '/var/opt/mssql/backup/OrderDb_$DATE.bak'"
+docker cp "orderdb:/var/opt/mssql/backup/OrderDb_$DATE.bak" "$BACKUP_DIR/$DATE/"
+
+# Backup MySQL
+docker exec productdb mysqldump -u root -p"$PRODUCTDB_ROOT_PASSWORD" --all-databases > "$BACKUP_DIR/$DATE/mysql.sql"
+
+# Backup PostgreSQL
+PGPASSWORD="$CUSTOMERDB_PASSWORD" docker exec -e PGPASSWORD="$CUSTOMERDB_PASSWORD" customerdb pg_dump -U "$CUSTOMERDB_USER" CustomerDb > "$BACKUP_DIR/$DATE/customerdb.sql"
+
+# Backup Portainer config
+docker run --rm -v portainer_data:/data -v "$BACKUP_DIR/$DATE":/backup alpine tar czf /backup/portainer.tar.gz /data
+
+# Nén và xóa backup cũ hơn 30 ngày
+cd "$BACKUP_DIR"
+tar czf "$DATE.tar.gz" "$DATE"
+rm -rf "$DATE"
+find . -name "*.tar.gz" -mtime +30 -delete
+
+echo "Backup hoàn tất: $BACKUP_DIR/$DATE.tar.gz"
+```
+
+Thêm vào crontab (Linux):
+```sh
+# Chạy backup mỗi ngày lúc 2h sáng
+0 2 * * * /opt/microservices/backup.sh
+```
+
+---
+
+## 8. Chuyển Từ Development Sang Production
+
+### 8.1. Chuẩn Bị
+
+```sh
+# 1. Đảm bảo tất cả services hoạt động trên môi trường development
+docker compose -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.apps.yml up -d --build
+
+# 2. Kiểm tra logs không có lỗi
+docker compose -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.apps.yml logs --tail=50
+
+# 3. Kiểm tra API Gateway hoạt động
+curl http://localhost:5293/health
+```
+
+### 8.2. Copy Lên Production Server
+
+```sh
+# Tạo thư mục trên server
+ssh user@production-server
+sudo mkdir -p /opt/microservices
+sudo chown $USER:$USER /opt/microservices
+exit
+
+# Copy toàn bộ source code và cấu hình
+scp -r . user@production-server:/opt/microservices/
+
+# Hoặc dùng rsync để đồng bộ (nhanh hơn khi cập nhật)
+rsync -avz --exclude '.git' --exclude 'bin' --exclude 'obj' --exclude '.vs' . user@production-server:/opt/microservices/
+```
+
+### 8.3. Thiết Lập Trên Server
+
+```sh
+# SSH vào server
+ssh user@production-server
+cd /opt/microservices
+
+# Copy và cấu hình biến môi trường
+cp .env.prod.example .env.prod
+nano .env.prod   # Nhập mật khẩu thực tế
+
+# Đặt quyền hạn chế cho file .env.prod
+chmod 600 .env.prod
+
+# Khởi động services
+docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod up -d
+
+# Kiểm tra tất cả containers đã chạy
+docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod ps
+```
+
+### 8.4. Kiểm Tra Sau Deploy
+
+```sh
+# 1. Kiểm tra tất cả containers đang chạy
+docker ps | findstr /R microservices
+
+# 2. Kiểm tra logs không có lỗi critical
+docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod logs --tail=20
+
+# 3. Test API Gateway
+curl http://localhost:5293/api/product/health
+
+# 4. Truy cập Portainer để kiểm tra giao diện
+# https://<IP-SERVER>:9443
+
+# 5. Kiểm tra Elasticsearch
+curl http://localhost:9200 -u elastic:"$ELASTIC_PASSWORD"
+
+# 6. Kiểm tra RabbitMQ
+# http://<IP-SERVER>:15672
+```
+
+---
+
+## 9. Giải Thích Chi Tiết Các Lệnh
+
+### 9.1. Khởi Động Services
+
+```sh
+docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod up -d
+```
+
+| Thành phần             | Ý nghĩa                                                   |
+|------------------------|-----------------------------------------------------------|
+| `docker compose`       | Docker Compose v2 (plugin tích hợp trong Docker CLI)     |
+| `-f docker-compose.yml`| File cấu hình base (services, networks, volumes)          |
+| `-f docker-compose.prod.yml`| File override cho production (mật khẩu, logging, Portainer) |
+| `--env-file .env.prod` | File chứa biến môi trường cho production                   |
+| `up`                   | Tạo và khởi động containers                                |
+| `-d`                   | Detached mode — chạy ngầm ở background                     |
+
+### 9.2. Build và Khởi Động
+
+```sh
+docker compose -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.apps.yml up -d --build
+```
+
+| Thành phần             | Ý nghĩa                                                   |
+|------------------------|-----------------------------------------------------------|
+| `--build`              | Build lại images trước khi khởi động containers            |
+| `docker-compose.apps.yml`| File cấu hình application services (.NET APIs + Jaeger)  |
+
+### 9.3. Xem Logs
+
+```sh
+docker compose logs -f --tail=100 orderdb
+```
+
+| Thành phần | Ý nghĩa                                           |
+|------------|---------------------------------------------------|
+| `logs`     | In logs của containers                             |
+| `-f`       | Follow mode — xem real-time (giống tail -f)        |
+| `--tail=100`| Chỉ hiển thị 100 dòng gần nhất                    |
+| `orderdb`  | Tên service cụ thể (nếu không chỉ định, xem tất cả)|
+
+### 9.4. Dừng Services
+
+```sh
+docker compose -f docker-compose.yml -f docker-compose.dev.yml down
+```
+
+| Thành phần | Ý nghĩa                                                              |
+|------------|----------------------------------------------------------------------|
+| `down`     | Dừng và xóa containers, networks (giữ volumes và images)              |
+| `-v`       | Xóa luôn volumes (CẢNH BÁO: mất dữ liệu databases!)                  |
+| `--rmi all`| Xóa luôn images được tạo từ Dockerfile                                |
+
+### 9.5. Liệt Kê và Kiểm Tra
+
+```sh
+docker ps                          # Containers đang chạy
+docker ps -a                       # Tất cả containers (kể cả đã dừng)
+docker compose ps                  # Trạng thái services trong compose
+docker stats                       # Resource usage real-time
+docker system df                   # Dung lượng Docker đang dùng
+docker network inspect microservices # Chi tiết network
+docker volume ls                   # Liệt kê volumes
+docker images                      # Liệt kê images
+```
+
+---
+
+## 10. Các Lỗi Thường Gặp
+
+### 10.1. Lỗi Port Đã Được Sử Dụng
+
+```
+Error: Bind for 0.0.0.0:1435 failed: port is already allocated
+```
+
+**Nguyên nhân:** Port đã bị process khác hoặc container khác chiếm dụng.
+
+**Giải pháp:**
+```sh
+# Tìm process đang dùng port
+netstat -ano | findstr :1435
+
+# Dừng process đó hoặc đổi port trong docker-compose
+# ports:
+#   - "1438:1433"   # Đổi port host
+```
+
+### 10.2. Lỗi Container Exit Ngay Sau Khi Start
+
+```
+CONTAINER ID   IMAGE     COMMAND   CREATED    STATUS                        PORTS     NAMES
+abc123...      mysql     ...       1 min ago  Exited (1) 30 seconds ago     ...       productdb
+```
+
+**Nguyên nhân:** Lỗi cấu hình, thiếu biến môi trường, hoặc resource không đủ.
+
+**Giải pháp:**
+```sh
+# Xem logs để biết lỗi chính xác
+docker logs productdb
+
+# Kiểm tra biến môi trường
+docker inspect productdb | findstr "MYSQL"
+
+# Kiểm tra resource
+docker stats --no-stream
+```
+
+### 10.3. Lỗi Không Kết Nối Được Từ App Đến Database
+
+```
+System.Data.SqlClient.SqlException: Cannot open database 'OrderDb'
+```
+
+**Nguyên nhân:** Connection string sai, network sai, hoặc database chưa sẵn sàng.
+
+**Giải pháp:**
+```sh
+# Kiểm tra các container có cùng network không
+docker network inspect microservices
+
+# Kiểm tra tên service trong connection string (dùng tên service, không dùng localhost)
+# Đúng: "Server=orderdb,1433;Database=OrderDb;..."
+# Sai: "Server=localhost,1433;..."
+
+# Thêm depends_on và health check
+```
+
+### 10.4. Lỗi Hết Disk Space
+
+```
+Error response from daemon: write /var/lib/docker/overlay2/...: no space left on device
+```
+
+**Giải pháp:**
+```sh
+# Kiểm tra dung lượng
+df -h
+docker system df
+
+# Xóa logs cũ của containers
+docker compose -f docker-compose.prod.yml logs --tail=0
+
+# Dọn dẹp Docker
+docker system prune -f
+
+# Cấu hình log rotation (đã có trong docker-compose.prod.yml)
+# logging:
+#   options:
+#     max-size: "10m"
+#     max-file: "3"
+```
+
+### 10.5. Lỗi Elasticsearch Không Khởi Động
+
+```
+ElasticsearchException: java.io.IOException: failed to read [id:0, file:/usr/share/elasticsearch/data/nodes/0]
+```
+
+**Nguyên nhân:** Elasticsearch không có quyền ghi vào volume, hoặc vm.max_map_count chưa đủ.
+
+**Giải pháp (Linux):**
+```sh
+# Tăng vm.max_map_count (cần thiết cho Elasticsearch)
+sudo sysctl -w vm.max_map_count=262144
+
+# Làm cho persistent
+echo "vm.max_map_count=262144" | sudo tee -a /etc/sysctl.conf
+```
+
+### 10.6. Lỗi SQL Server Container
+
+```
+SQL Server 2022 will run as non-root by default
+This container is running as user mssql
+```
+
+**Giải pháp:**
+```sh
+# Chạy với user root nếu cần
+docker run -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=YourPassword123!" -u 0 mcr.microsoft.com/mssql/server:2022-latest
+
+# Hoặc cấp quyền cho thư mục data
+# Trên host:
+sudo chown -R 10001:10001 /var/lib/docker/volumes/sqlserver_data/_data
+```
+
+---
+
+## 11. Mẹo Hữu Ích
+
+### 11.1. Aliases Cho Tiện Lợi
+
+Thêm vào `~/.bashrc` hoặc `~/.zshrc` (Linux/Mac) hoặc `$PROFILE` (PowerShell):
+
+```sh
+# === Development Aliases ===
+alias dc-dev='docker compose -f docker-compose.yml -f docker-compose.dev.yml'
+alias dc-dev-all='docker compose -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.apps.yml'
+
+# === Production Aliases ===
+alias dc-prod='docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod'
+
+# === Shortcuts ===
+alias dcup='docker compose up -d'
+alias dcdown='docker compose down'
+alias dclogs='docker compose logs -f'
+alias dcps='docker compose ps'
+alias dps='docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"'
+```
+
+### 11.2. Xem Resource Usage
+
+```sh
+# Real-time monitoring
+docker stats
+
+# Một lần (không liên tục)
+docker stats --no-stream
+
+# Chỉ một container
+docker stats product-api
+
+# Custom format
+docker stats --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.NetIO}}"
+```
+
+### 11.3. Dọn Dẹp Hệ Thống
+
+```sh
+# An toàn — chỉ xóa những thứ không dùng
+docker container prune          # Xóa containers đã dừng
+docker image prune              # Xóa dangling images
+docker volume prune             # Xóa volumes không dùng
+docker network prune            # Xóa networks không dùng
+docker builder prune            # Xóa build cache
+
+# Mạnh hơn — xóa cả images không dùng đến
+docker image prune -a
+
+# CẢNH BÁO — xóa gần như tất cả
 docker system prune -a --volumes
 ```
 
-### 3. Backup nhanh m?t database:
+### 11.4. Debug Container
+
 ```sh
-# SQL Server
-docker exec orderdb /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "Passw0rd!" -Q "BACKUP DATABASE OrderDb TO DISK = '/var/opt/mssql/backup/OrderDb_$(date +%Y%m%d).bak'"
+# Mở shell bên trong container đang chạy
+docker exec -it orderdb bash
+
+# Chạy lệnh một lần trong container
+docker exec productdb mysql -u root -p"$PASSWORD" -e "SHOW DATABASES;"
+
+# Copy file từ container ra host
+docker cp orderdb:/var/opt/mssql/backup/OrderDb.bak .
+
+# Copy file từ host vào container
+docker cp ./init.sql orderdb:/docker-entrypoint-initdb.d/
+
+# Xem chi tiết cấu hình container
+docker inspect orderdb
+
+# Xem resource usage chi tiết
+docker stats --no-stream --format "{{.Name}}: {{.MemUsage}} CPU: {{.CPUPerc}}"
 ```
 
-### 4. Restore database:
+### 11.5. Kiểm Tra Health
+
 ```sh
-# SQL Server
-docker exec orderdb /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "Passw0rd!" -Q "RESTORE DATABASE OrderDb FROM DISK = '/var/opt/mssql/backup/OrderDb.bak'"
+# Kiểm tra health status của containers
+docker ps --filter "health=healthy"
+docker ps --filter "health=unhealthy"
+
+# Kiểm tra restart count
+docker inspect --format '{{.Name}} - Restarts: {{.RestartCount}}' $(docker ps -aq)
+
+# Kiểm tra container đã chạy được bao lâu
+docker ps --format "table {{.Names}}\t{{.RunningFor}}\t{{.Status}}"
+```
+
+### 11.6. Network Debugging
+
+```sh
+# Kiểm tra DNS resolution giữa các containers
+docker exec product-api ping orderdb
+
+# Kiểm tra kết nối TCP
+docker exec product-api bash -c "cat < /dev/tcp/orderdb/1433"
+
+# Xem chi tiết network
+docker network inspect microservices
+
+# Kiểm tra container nào đang trong network
+docker network inspect microservices --format '{{range .Containers}}{{.Name}} {{end}}'
 ```
 
 ---
 
-## Checklist Tr??c Khi Deploy Production
+## 12. Checklist Trước Khi Deploy Production
 
-- [ ] ?� test t?t c? services ? local
-- [ ] ?� c?u h�nh t?t c? m?t kh?u m?nh trong .env.prod
-- [ ] ?� setup HTTPS cho Portainer
-- [ ] ?� c?u h�nh firewall
-- [ ] ?� thi?t l?p backup t? ??ng
-- [ ] ?� test k?t n?i t? API services ??n databases
-- [ ] ?� c?u h�nh monitoring v� alerts
-- [ ] ?� document t?t c? credentials v� l?u tr? an to�n
-- [ ] ?� setup log rotation
-- [ ] ?� test disaster recovery plan
+### 12.1. Chuẩn Bị
+
+- [ ] **Đã test tất cả services trên môi trường development** — không có lỗi critical
+- [ ] **Đã kiểm tra logs** — không có cảnh báo hoặc lỗi bất thường
+- [ ] **Đã chạy unit tests và integration tests** — tất cả đều pass
+- [ ] **Đã kiểm tra API Gateway** — tất cả routes hoạt động đúng
+- [ ] **Đã kiểm tra Jaeger tracing** — distributed traces hoạt động
+
+### 12.2. Bảo Mật
+
+- [ ] **Đã cấu hình mật khẩu mạnh trong .env.prod** (tối thiểu 16 ký tự, hỗn hợp ký tự)
+- [ ] **Đã loại bỏ mật khẩu mặc định** — không còn "Passw0rd!" hay "admin1234"
+- [ ] **File .env.prod đã được thêm vào .gitignore** — không commit lên Git
+- [ ] **File .env.prod có quyền 600** — chỉ owner mới đọc được
+- [ ] **Portainer chỉ mở port 9443 (HTTPS)** — không mở port 9000 (HTTP)
+- [ ] **Docker socket được mount với chế độ read-only** (`:ro`)
+- [ ] **security_opt: no-new-privileges:true** đã được cấu hình
+- [ ] **Redis** yêu cầu password (`--requirepass`)
+- [ ] **MongoDB** yêu cầu authentication (username + password)
+- [ ] **Elasticsearch** đã bật xpack.security
+
+### 12.3. Hạ Tầng
+
+- [ ] **Firewall đã được cấu hình** — chỉ mở các port cần thiết
+- [ ] **vm.max_map_count** đã được set cho Elasticsearch (262144)
+- [ ] **Server có đủ tài nguyên** — RAM, CPU, Disk cho tất cả containers
+- [ ] **Log rotation đã được cấu hình** — `max-size: 10m`, `max-file: 3`
+- [ ] **Network microservices bridge** đã được tạo
+- [ ] **SSL certificates** cho Portainer đã sẵn sàng
+
+### 12.4. Backup
+
+- [ ] **Script backup tự động** đã được tạo và kiểm tra
+- [ ] **Backup databases** đã được kiểm tra (có thể restore được không?)
+- [ ] **Backup Portainer config** đã được thiết lập
+- [ ] **Lịch crontab** đã được cấu hình (backup hàng ngày)
+- [ ] **Backup được lưu ở vị trí an toàn** (khác server production)
+- [ ] **Đã test disaster recovery plan** — restore từ backup hoạt động
+
+### 12.5. Kiểm Tra Trước Khi Chạy
+
+- [ ] **Copy source code và cấu hình lên server** — `scp` hoặc `rsync`
+- [ ] **Chạy thử với compose** — `docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod up -d`
+- [ ] **Tất cả containers đều ở trạng thái Up** — kiểm tra với `docker ps`
+- [ ] **Kiểm tra kết nối từ API services đến databases**
+- [ ] **Kiểm tra API Gateway trả về response đúng**
+- [ ] **Kiểm tra Portainer có thể truy cập qua HTTPS**
+- [ ] **Kiểm tra Elasticsearch hoạt động với authentication**
+- [ ] **Kiểm tra RabbitMQ management interface**
+
+### 12.6. Giám Sát & Vận Hành
+
+- [ ] **Đã cấu hình monitoring** — Portainer dashboard hoạt động
+- [ ] **Đã thiết lập alerts** — webhooks hoặc email notifications
+- [ ] **Đã document tất cả credentials** — lưu trữ an toàn (password manager)
+- [ ] **Đã có kế hoạch update** — quy trình pull image mới và restart
+- [ ] **Đã kiểm tra dung lượng đĩa** — đủ cho dữ liệu và logs
+- [ ] **Đã cấu hình health checks** cho critical services
+
+### 12.7. Sau Khi Deploy
+
+- [ ] **Kiểm tra toàn bộ hệ thống** — end-to-end test qua API Gateway
+- [ ] **Kiểm tra logs không có lỗi** — tất cả services hoạt động ổn định
+- [ ] **Kiểm tra resource usage** — CPU, RAM không ở mức quá cao
+- [ ] **Tạo snapshot đầu tiên** — backup ngay sau khi deploy thành công
+- [ ] **Thông báo cho team** — deployment hoàn tất
+
+---
+
+## Phụ Lục: Cấu Trúc File Docker Compose
+
+```
+MicroserviceApp/
+├── docker-compose.yml           # Base: databases + infrastructure
+├── docker-compose.dev.yml       # Development override
+├── docker-compose.prod.yml      # Production override (có Portainer)
+├── docker-compose.apps.yml      # Application services (.NET APIs + Jaeger)
+├── docker-compose.override.yml  # Default override (dùng khi không chỉ định -f)
+├── .env.prod.example            # Template biến môi trường production
+├── .dockerignore                # File loại trừ khi build Docker images
+└── src/
+    └── Services|ApiGateways/
+        └── */Dockerfile         # Dockerfile cho từng service
+```
+
+**Thứ tự merge của docker-compose files:**
+
+```sh
+# Development (override từ phải sang trái)
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+#   → docker-compose.yml:     định nghĩa services, networks, volumes
+#   → docker-compose.dev.yml: override environment, ports, resources cho dev
+
+# Production
+docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod up -d
+#   → docker-compose.yml:     định nghĩa services, networks, volumes
+#   → docker-compose.prod.yml: override environment, logging, security, Portainer
+#   → --env-file .env.prod:   biến môi trường từ file
+
+# Full stack (cả apps)
+docker compose -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.apps.yml up -d --build
+#   → Thêm application services và Jaeger
+```
+
+---
+
+> **Tài liệu này dành cho dự án MicroserviceApp.**  
+> Mọi thắc mắc hoặc đề xuất cải thiện, vui lòng tạo issue trên repository.

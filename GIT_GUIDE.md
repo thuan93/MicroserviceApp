@@ -1,445 +1,972 @@
-# Git Workflow - H??ng D?n S? D?ng Git
+# Hướng dẫn sử dụng Git — Git Workflow Guide
 
-## ?? C�c File Quan Tr?ng ?� Th�m
-
-### 1. `.gitignore`
-- Lo?i b? c�c file kh�ng c?n thi?t kh?i Git
-- B?o v? th�ng tin nh?y c?m (passwords, keys)
-- Gi? repo s?ch s?
-
-### 2. `.gitattributes`
-- ??m b?o line endings ??ng nh?t (LF vs CRLF)
-- T?i ?u merge conflicts
-- X? l� file binaries ?�ng c�ch
-
-### 3. `.dockerignore`
-- T?i ?u Docker build
-- Gi?m k�ch th??c Docker images
-- Lo?i b? files kh�ng c?n trong containers
+> Phiên bản: 1.0  
+> Mục đích: Chuẩn hóa quy trình làm việc với Git trong dự án MicroserviceApp.
 
 ---
 
-## ?? Workflow C? B?n
+## Mục lục
 
-### Ki?m tra tr?ng th�i hi?n t?i:
-```sh
+1. [Các file quan trọng](#1-các-file-quan-trọng)
+2. [Workflow cơ bản](#2-workflow-cơ-bản)
+3. [Kiểm tra file nào đang bị ignore](#3-kiểm-tra-file-nào-đang-bị-ignore)
+4. [Dọn dẹp file không cần thiết](#4-dọn-dẹp-file-không-cần-thiết)
+5. [Các file KHÔNG NÊN commit](#5-các-file-không-nên-commit)
+6. [Bảo vệ thông tin nhạy cảm](#6-bảo-vệ-thông-tin-nhạy-cảm)
+7. [Branching strategy](#7-branching-strategy)
+8. [Commit message convention](#8-commit-message-convention)
+9. [Sync với remote repository & xử lý conflicts](#9-sync-với-remote-repository--xử-lý-conflicts)
+10. [Các lệnh hữu ích](#10-các-lệnh-hữu-ích)
+11. [Kiểm tra repository health](#11-kiểm-tra-repository-health)
+12. [Best practices](#12-best-practices)
+13. [Troubleshooting](#13-troubleshooting)
+14. [Git aliases](#14-git-aliases)
+
+---
+
+## 1. Các file quan trọng
+
+### `.gitignore`
+
+File `.gitignore` liệt kê các pattern mà Git sẽ bỏ qua (không track). Mỗi pattern trên một dòng.
+
+```gitignore
+# Dependencies
+node_modules/
+vendor/
+
+# Build output
+dist/
+build/
+out/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE & OS
+.vs/
+.vscode/
+.idea/
+*.suo
+*.user
+Thumbs.db
+.DS_Store
+
+# Logs
+*.log
+npm-debug.log*
+
+# Runtime
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage
+coverage/
+.nyc_output/
+```
+
+### `.gitattributes`
+
+File `.gitattributes` kiểm soát cách Git xử lý file trên các hệ điều hành khác nhau.
+
+```gitattributes
+# Normalize line endings
+* text=auto eol=lf
+
+# Binary files
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.tar.gz binary
+
+# Scripts
+*.sh text eol=lf
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+```
+
+### `.dockerignore`
+
+File `.dockerignore` giúp Docker bỏ qua file không cần thiết khi build image.
+
+```dockerignore
+.git
+.gitignore
+.gitattributes
+node_modules/
+npm-debug.log
+.vs/
+.vscode/
+.idea/
+*.md
+coverage/
+.env
+.env.*
+```
+
+---
+
+## 2. Workflow cơ bản
+
+### Quy trình 4 bước hàng ngày
+
+```bash
+# Bước 1: Kiểm tra trạng thái
 git status
+
+# Bước 2: Thêm file vào staging
+git add <file>          # Thêm một file
+git add .               # Thêm tất cả file (cẩn thận!)
+git add -p              # Thêm từng phần (interactive)
+
+# Bước 3: Commit với message
+git commit -m "type(scope): message"
+
+# Bước 4: Đẩy lên remote
+git push origin <branch>
 ```
 
-### Xem files ?� b? ignore:
-```sh
+### Quy trình đầy đủ
+
+```bash
+# Pull mới nhất trước khi làm việc
+git checkout main
+git pull origin main
+
+# Tạo branch mới
+git checkout -b feature/ten-tinh-nang
+
+# Làm việc và commit nhiều lần
+git add .
+git commit -m "feat: thêm chức năng A"
+git commit -m "fix: sửa lỗi B"
+
+# Push và tạo Pull Request
+git push origin feature/ten-tinh-nang
+```
+
+---
+
+## 3. Kiểm tra file nào đang bị ignore
+
+```bash
+# Liệt kê tất cả file đang bị ignore
 git status --ignored
-```
 
-### Th�m t?t c? files m?i:
-```sh
-git add .
-```
+# Kiểm tra một file cụ thể có bị ignore không
+git check-ignore -v path/to/file
 
-### Commit thay ??i:
-```sh
-git commit -m "feat: add comprehensive .gitignore and Docker configs"
-```
+# Xem pattern nào đang ignore file
+git check-ignore -v node_modules/package.json
 
-### Push l�n GitHub:
-```sh
-git push origin main
+# Liệt kê tất cả file ignored (chỉ tên file)
+git ls-files --others --ignored --exclude-standard
+
+# Xem tất cả file đang được track
+git ls-files
 ```
 
 ---
 
-## ?? Ki?m Tra Files N�o ?ang B? Ignore
+## 4. Dọn dẹp file không cần thiết
 
-### Ki?m tra m?t file c? th?:
-```sh
-# Ki?m tra xem file c� b? ignore kh�ng
-git check-ignore -v bin/Debug/net8.0/MyApp.dll
+### Xóa file khỏi track nhưng giữ trên ổ đĩa
 
-# K?t qu? s? hi?n th? rule n�o ?ang ignore file n�y
+```bash
+git rm --cached <file>
+git rm --cached -r <folder>
 ```
 
-### Xem t?t c? files b? ignored:
-```sh
-git status --ignored
+### Xóa file khỏi cả track lẫn ổ đĩa
+
+```bash
+git rm <file>
+git rm -r <folder>
+```
+
+### Dọn dẹp file không cần thiết khỏi lịch sử
+
+```bash
+# Xóa file nhạy cảm khỏi toàn bộ lịch sử (dùng BFG hoặc filter-branch)
+# CẢNH BÁO: Chỉ làm khi thực sự cần, sẽ rewrite history
+
+# Cách 1: Dùng git filter-branch
+git filter-branch --force --index-filter \
+  "git rm --cached --ignore-unmatch path/to/file" \
+  --prune-empty --tag-name-filter cat -- --all
+
+# Cách 2: Dùng BFG (khuyến nghị)
+java -jar bfg.jar --delete-files file.env
+```
+
+### Dọn dẹp local branches đã merged
+
+```bash
+# Xóa local branch đã merge vào main
+git branch --merged main | grep -v "main" | xargs -n 1 git branch -d
+
+# Xóa remote branch đã merged (cẩn thận!)
+git branch -r --merged main | grep -v "main" | sed 's/origin\///' | xargs -n 1 git push origin --delete
+```
+
+### Dọn dẹp git history (squash)
+
+```bash
+# Squash N commit gần nhất
+git rebase -i HEAD~N
 ```
 
 ---
 
-## ?? D?n D?p Files Kh�ng C?n Thi?t
+## 5. Các file KHÔNG NÊN commit
 
-### X�a files ?� tracked nh?ng gi? ?� th�m v�o .gitignore:
+### Tuyệt đối không commit
 
-```sh
-# 1. Commit t?t c? changes tr??c
-git add .
-git commit -m "chore: save work before cleanup"
+| Loại file | Ví dụ | Lý do |
+|-----------|-------|-------|
+| Biến môi trường | `.env`, `.env.local` | Chứa secret key, database password |
+| Dependency lock | `node_modules/`, `vendor/` | Có thể tái tạo từ package.json |
+| Build output | `dist/`, `build/`, `out/` | Có thể build lại |
+| File log | `*.log`, `npm-debug.log*` | Quá lớn, không cần thiết |
+| IDE config | `.vs/`, `.vscode/`, `.idea/` | Cá nhân, không liên quan dự án |
+| OS files | `Thumbs.db`, `.DS_Store` | Hệ điều hành tự sinh |
+| Binary files lớn | `*.exe`, `*.dll`, `*.so` | Làm chậm repository |
+| File backup | `*.bak`, `*.swp`, `*~` | File tạm |
+| Certificate/Key | `*.pem`, `*.key`, `*.cert` | Bảo mật |
 
-# 2. X�a t?t c? files t? Git index (kh�ng x�a kh?i disk)
-git rm -r --cached .
+### File nhạy cảm cần cẩn trọng
 
-# 3. Th�m l?i t?t c? files (l?n n�y s? respect .gitignore)
-git add .
+- `appsettings.*.json` — nếu chứa connection string thật
+- `docker-compose.override.yml` — nếu chứa mật khẩu
+- `web.config` — nếu chứa thông tin nhạy cảm
 
-# 4. Commit cleanup
-git commit -m "chore: apply .gitignore rules to existing files"
+---
 
-# 5. Push l�n remote
-git push origin main
+## 6. Bảo vệ thông tin nhạy cảm
+
+### Phát hiện secret trong repository
+
+```bash
+# Dùng git-secrets (AWS)
+git secrets --scan
+
+# Dùng truffleHog
+trufflehog --regex --entropy=True https://github.com/user/repo
+
+# Dùng Gitleaks
+gitleaks detect -v
 ```
 
-**?? C?nh b�o**: L?nh n�y s? x�a files kh?i Git history. N?u files ?� ???c push l�n remote, nh?ng ng??i kh�c s? th?y files b? x�a khi h? pull.
+### Xóa secret đã commit (khẩn cấp)
 
----
-
-## ?? C�c Files KH�NG N�N Commit
-
-### ? Files lu�n b? ignore:
-
-1. **Build outputs**
-   - `bin/`, `obj/`
-   - L� do: ???c t?o l?i m?i l?n build
-
-2. **IDE configs**
-   - `.vs/`, `.vscode/`, `.idea/`
-   - L� do: M?i ng??i c� settings ri�ng
-
-3. **Environment files**
-   - `.env.prod`, `.env.local`
-   - L� do: Ch?a passwords v� secrets
-
-4. **Docker volumes**
-   - `postgres-data/`, `mysql-data/`
-   - L� do: D? li?u local, kh�ng c?n share
-
-5. **Logs**
-   - `*.log`, `logs/`
-   - L� do: Files t?m th?i, kh�ng quan tr?ng
-
-6. **Certificates**
-   - `*.pem`, `*.key`, `*.pfx`
-   - L� do: Th�ng tin b?o m?t
-
-### ? Files N�N commit:
-
-1. **Source code**
-   - `*.cs`, `*.csproj`
-
-2. **Configurations**
-   - `appsettings.json` (kh�ng c� secrets)
-   - `docker-compose.yml`
-
-3. **Documentation**
-   - `README.md`, `DOCKER_GUIDE.md`
-
-4. **Example files**
-   - `.env.example`, `.env.prod.example`
-
----
-
-## ?? B?o V? Th�ng Tin Nh?y C?m
-
-### N?u ?� commit password/secret nh?m:
-
-```sh
-# 1. X�a file kh?i Git nh?ng gi? tr�n disk
-git rm --cached .env.prod
-
-# 2. Th�m v�o .gitignore
-echo ".env.prod" >> .gitignore
-
-# 3. Commit
+```bash
+# 1. Thêm file vào .gitignore
+echo ".env" >> .gitignore
 git add .gitignore
-git commit -m "chore: remove sensitive file from Git"
+git commit -m "chore: thêm .env vào gitignore"
 
-# 4. Push
-git push origin main
+# 2. Xóa file khỏi Git cache
+git rm --cached .env
+
+# 3. Xóa khỏi toàn bộ lịch sử
+git filter-branch --force --index-filter \
+  "git rm --cached --ignore-unmatch .env" \
+  --prune-empty --tag-name-filter cat -- --all
+
+# 4. Force push (cẩn thận!)
+git push origin --force --all
+git push origin --force --tags
 ```
 
-**?? Quan tr?ng**: File v?n c�n trong Git history! ?? x�a ho�n to�n, c?n d�ng `git filter-branch` ho?c BFG Repo-Cleaner.
+### Ngăn chặn ngay từ đầu
 
-### ??i t?t c? passwords:
-Sau khi x�a secrets kh?i Git, **B?T BU?C** ph?i ??i t?t c? passwords v� ch�ng ?� b? exposed!
+```bash
+# Bật git-secrets hooks
+git secrets --install
+git secrets --register-aws
+
+# Hoặc dùng pre-commit hooks
+# File .pre-commit-config.yaml
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: detect-private-key
+      - id: check-added-large-files
+  - repo: https://github.com/awslabs/git-secrets
+    rev: master
+    hooks:
+      - id: git-secrets
+```
 
 ---
 
-## ?? Branching Strategy
+## 7. Branching strategy
 
-### Feature Branch Workflow:
+### Cấu trúc branch
 
-```sh
-# 1. T?o branch m?i t? main
-git checkout main
-git pull origin main
-git checkout -b feature/add-order-service
+```
+main
+├── develop
+│   ├── feature/dang-nhap
+│   ├── feature/thanh-toan
+│   ├── bugfix/sua-loi-login
+│   ├── refactor/toi-uu-api
+│   └── docs/update-readme
+├── hotfix/crash-production
+└── release/v1.2.0
+```
 
-# 2. L�m vi?c tr�n branch
-# ... code changes ...
+### Quy tắc đặt tên
 
-# 3. Commit changes
+| Loại branch | Pattern | Ví dụ |
+|-------------|---------|-------|
+| Feature | `feature/<tên-ngắn-gọn>` | `feature/dang-nhap-google` |
+| Bugfix | `bugfix/<tên-lỗi>` | `bugfix/null-reference-user` |
+| Hotfix | `hotfix/<mô-tả>` | `hotfix/crash-checkout-page` |
+| Refactor | `refactor/<phạm-vi>` | `refactor/api-response-format` |
+| Docs | `docs/<nội-dung>` | `docs/api-endpoints` |
+| Release | `release/v<version>` | `release/v1.2.0` |
+| Chore | `chore/<công-việc>` | `chore/update-dependencies` |
+
+### Quy trình làm việc
+
+```bash
+# 1. Luôn bắt đầu từ develop (hoặc main nếu không có develop)
+git checkout develop
+git pull origin develop
+
+# 2. Tạo feature branch
+git checkout -b feature/ten-tinh-nang
+
+# 3. Làm việc, commit thường xuyên
 git add .
-git commit -m "feat: add Order service API"
+git commit -m "feat: thêm chức năng X"
 
-# 4. Push l�n remote
-git push origin feature/add-order-service
+# 4. Sync với develop thường xuyên
+git fetch origin
+git rebase origin/develop
+# Hoặc: git merge origin/develop
 
-# 5. T?o Pull Request tr�n GitHub
-
-# 6. Sau khi merge, x�a branch local
-git checkout main
-git pull origin main
-git branch -d feature/add-order-service
-```
-
-### Branch naming convention:
-
-- `feature/ten-tinh-nang` - T�nh n?ng m?i
-- `bugfix/ten-bug` - S?a bug
-- `hotfix/ten-issue` - S?a urgent bug trong production
-- `refactor/ten-refactor` - Refactor code
-- `docs/ten-doc` - C?p nh?t documentation
-
----
-
-## ?? Commit Message Convention
-
-### Format:
-```
-<type>(<scope>): <subject>
-
-<body>
-
-<footer>
-```
-
-### Types:
-- `feat`: T�nh n?ng m?i
-- `fix`: S?a bug
-- `docs`: Thay ??i documentation
-- `style`: Format code (kh�ng thay ??i logic)
-- `refactor`: Refactor code
-- `test`: Th�m ho?c s?a tests
-- `chore`: Maintenance tasks (build, configs, etc.)
-- `perf`: C?i thi?n performance
-
-### Examples:
-
-```sh
-# Good commits
-git commit -m "feat(ordering): add create order endpoint"
-git commit -m "fix(basket): resolve Redis connection timeout"
-git commit -m "docs: update Docker setup guide"
-git commit -m "chore: add .gitignore and .dockerignore"
-
-# Bad commits (avoid these)
-git commit -m "fix bug"
-git commit -m "update"
-git commit -m "WIP"
+# 5. Push và tạo Pull Request
+git push origin feature/ten-tinh-nang
 ```
 
 ---
 
-## ?? Sync v?i Remote Repository
+## 8. Commit message convention
 
-### Pull changes t? remote:
-```sh
-# Pull v� merge
-git pull origin main
+### Conventional Commits
 
-# Pull v� rebase (recommended)
-git pull --rebase origin main
+```
+<type>(<scope>): <description>
+
+[body]
+
+[footer(s)]
 ```
 
-### X? l� conflicts:
-```sh
-# 1. Git s? b�o conflicts
-# 2. M? files c� conflict v� s?a
-# 3. Mark resolved
-git add .
+### Các type phổ biến
 
-# 4a. N?u ?ang merge
-git commit
+| Type | Ý nghĩa | Ví dụ |
+|------|---------|-------|
+| `feat` | Thêm tính năng mới | `feat(auth): thêm đăng nhập Google` |
+| `fix` | Sửa lỗi | `fix(api): sửa null reference khi get user` |
+| `docs` | Thay đổi tài liệu | `docs: cập nhật API docs` |
+| `style` | Format code, không thay đổi logic | `style: format code theo ESLint` |
+| `refactor` | Tái cấu trúc code | `refactor: tách UserService thành interface` |
+| `test` | Thêm/sửa test | `test: thêm unit test cho AuthController` |
+| `chore` | Công việc bảo trì | `chore: cập nhật dependencies` |
+| `perf` | Cải thiện hiệu năng | `perf: tối ưu query database` |
+| `ci` | CI/CD config | `ci: thêm GitHub Actions workflow` |
+| `build` | Build system | `build: cập nhật Dockerfile` |
+| `revert` | Revert commit trước | `revert: hoàn tác commit abc123` |
 
-# 4b. N?u ?ang rebase
+### Ví dụ commit message
+
+```
+feat(order): thêm API tạo đơn hàng mới
+
+- Thêm POST /api/orders
+- Validate dữ liệu đầu vào
+- Gửi email xác nhận sau khi tạo thành công
+
+Closes #123
+```
+
+```
+fix(auth): sửa lỗi token hết hạn không refresh
+
+- Kiểm tra expiry time trước khi gọi API
+- Tự động refresh token khi còn 5 phút
+
+Hotfix: S-456
+```
+
+```
+refactor(core): tách BusinessService thành interface và implementation
+
+ISSUES: PROJ-789
+```
+
+---
+
+## 9. Sync với remote repository & xử lý conflicts
+
+### Fetch, Pull, Rebase
+
+```bash
+# Cập nhật thông tin remote
+git fetch origin
+
+# Pull với rebase (giữ lịch sử sạch)
+git pull --rebase origin develop
+
+# Pull thông thường
+git pull origin develop
+```
+
+### Cấu hình pull mặc định với rebase
+
+```bash
+git config --global pull.rebase true
+git config --global rebase.autoStash true
+```
+
+### Xử lý conflict
+
+```bash
+# Khi có conflict, Git sẽ báo file bị conflict
+# Mở file và tìm:
+<<<<<<< HEAD
+// Code hiện tại
+=======
+// Code từ branch khác
+>>>>>>> feature/xxx
+
+# Sau khi sửa xong:
+git add <file-da-sua>
 git rebase --continue
+# hoặc
+git merge --continue
 ```
 
----
+### Các lệnh conflict hữu ích
 
-## ??? C�c L?nh H?u �ch
+```bash
+# Xem danh sách file conflict
+git diff --name-only --diff-filter=U
 
-### Xem history:
-```sh
-# Xem log ??p
-git log --oneline --graph --all --decorate
-
-# Xem changes c?a m?t commit
-git show <commit-hash>
-
-# Xem changes ch?a commit
+# Xem nội dung conflict
 git diff
 
-# Xem changes ?� staged
-git diff --staged
+# Hủy rebase đang thực hiện
+git rebase --abort
+
+# Hủy merge đang thực hiện
+git merge --abort
+
+# Dùng công cụ merge (cần cấu hình)
+git mergetool
 ```
 
-### Undo changes:
-```sh
-# Undo changes ch?a stage (nguy hi?m!)
+---
+
+## 10. Các lệnh hữu ích
+
+### Git log
+
+```bash
+# Log cơ bản
+git log
+
+# Log một dòng
+git log --oneline
+
+# Log đồ họa
+git log --oneline --graph --all --decorate
+
+# Log chi tiết
+git log --oneline --graph --all --decorate --author="ten"
+
+# Log với date range
+git log --since="2024-01-01" --until="2024-12-31"
+
+# Tìm commit theo message
+git log --grep="fix:"
+git log --oneline --grep="feat:" --all
+
+# Xem file nào thay đổi trong commit
+git log --name-status
+
+# Xem thống kê thay đổi
+git log --stat
+
+# Log với format tùy chỉnh
+git log --pretty=format:"%h - %an, %ar : %s"
+```
+
+### Undo các thao tác
+
+```bash
+# Undo unstaged changes (phục hồi file về trạng thái staged)
 git checkout -- <file>
+git restore <file>              # Git 2.23+
 
-# Unstage file (gi? changes)
+# Unstage file (giữ nguyên nội dung)
 git reset HEAD <file>
+git restore --staged <file>     # Git 2.23+
 
-# Undo commit g?n nh?t (gi? changes)
+# Undo commit gần nhất (giữ changes trong working directory)
 git reset --soft HEAD~1
 
-# Undo commit g?n nh?t (x�a changes - NGUY HI?M!)
+# Undo commit gần nhất (xóa changes luôn)
 git reset --hard HEAD~1
+
+# Undo commit và tạo commit mới để đảo ngược
+git revert HEAD
+git revert <commit-hash>
 ```
 
-### Stash (l?u t?m changes):
-```sh
-# L?u changes t?m
-git stash
+### Stash
 
-# Xem stash list
+```bash
+# Lưu tạm thay đổi
+git stash
+git stash push -m "message"
+
+# List stash
 git stash list
 
-# Apply stash g?n nh?t
+# Áp dụng stash gần nhất
+git stash pop          # Áp dụng và xóa khỏi stash
+git stash apply        # Áp dụng nhưng giữ lại stash
+
+# Áp dụng stash cụ thể
+git stash apply stash@{2}
+
+# Xóa stash
+git stash drop stash@{0}
+git stash clear        # Xóa tất cả
+
+# Stash bao gồm untracked files
+git stash -u
+git stash --include-untracked
+```
+
+### Cherry-pick và các lệnh hữu ích khác
+
+```bash
+# Lấy một commit cụ thể từ branch khác
+git cherry-pick <commit-hash>
+
+# So sánh hai branch
+git diff main..develop
+
+# Xem branch nào đã merge
+git branch --merged
+git branch --no-merged
+
+# Đánh tag
+git tag v1.0.0
+git tag -a v1.0.0 -m "Release version 1.0.0"
+git push origin v1.0.0
+
+# Bisect (tìm commit gây lỗi)
+git bisect start
+git bisect bad          # Commit hiện tại bị lỗi
+git bisect good v1.0.0  # Commit này chạy tốt
+# Git sẽ checkout commit ở giữa, kiểm tra và chạy:
+git bisect good         # hoặc git bisect bad
+git bisect reset
+```
+
+---
+
+## 11. Kiểm tra repository health
+
+### Kiểm tra dung lượng
+
+```bash
+# Dung lượng repository
+git count-objects -vH
+
+# File lớn nhất trong repository
+git rev-list --objects --all | \
+  git cat-file --batch-check='%(objecttype) %(objectname) %(objectsize) %(rest)' | \
+  sort -t' ' -k3 -n -r | head -10
+
+# Top 10 file lớn nhất
+git rev-list --objects --all | git cat-file \
+  --batch-check='%(objecttype) %(objectname) %(objectsize) %(rest)' | \
+  sed -n 's/^blob //p' | sort --numeric-sort --key=2 | \
+  tail -10 | cut -c 1-12,41- | $(command -v gnumfmt || echo numfmt) --field=2 --to=iec-i --suffix=B --padding=7 --round=nearest
+```
+
+### Kiểm tra tính toàn vẹn
+
+```bash
+# Kiểm tra objects có bị corrupt không
+git fsck
+
+# Kiểm tra chi tiết
+git fsck --full
+
+# Dọn dẹp
+git gc --auto
+git prune
+```
+
+### Phân tích và tối ưu
+
+```bash
+# Xem thống kê contributor
+git shortlog -sn
+
+# Xem số lượng commit theo ngày
+git log --date=short --format="%ad" | sort | uniq -c
+
+# Dọn dẹp repository
+git gc --aggressive
+git repack -a -d --depth=250 --window=250
+```
+
+---
+
+## 12. Best practices
+
+### Hàng ngày
+
+1. **Pull trước khi push**: Luôn `git pull --rebase` trước khi push.
+2. **Commit thường xuyên**: Commit nhỏ, mỗi commit một nhiệm vụ.
+3. **Viết commit message tốt**: Tuân thủ Conventional Commits.
+4. **Kiểm tra git status**: Trước khi commit, kiểm tra file nào đang thay đổi.
+5. **Đừng commit file build**: Thêm `dist/`, `build/` vào `.gitignore`.
+
+### Branch management
+
+6. **Không commit trực tiếp lên main/develop**: Luôn dùng Pull Request.
+7. **Xóa branch sau khi merge**: Giữ repository sạch sẽ.
+8. **Đặt tên branch có ý nghĩa**: `feature/thanh-toan-vnpay` thay vì `branch-1`.
+9. **Rebase thay vì merge**: Giữ lịch sử tuyến tính.
+10. **Giữ branch ngắn**: Feature branch không nên sống quá vài ngày.
+
+### Code & Security
+
+11. **Không commit secret**: Dùng `.env` file, không commit thật.
+12. **Không commit file lớn**: File > 50MB nên dùng Git LFS.
+13. **Dùng .gitignore từ đầu**: Tránh commit file không mong muốn.
+14. **Review Pull Request**: Luôn có ít nhất 1 người review.
+15. **Kiểm tra diff trước commit**: `git diff` để xem chính xác thay đổi.
+
+### Git config nên thiết lập
+
+```bash
+# Tên và email
+git config --global user.name "Tên Của Bạn"
+git config --global user.email "email@example.com"
+
+# Pull với rebase
+git config --global pull.rebase true
+git config --global rebase.autoStash true
+
+# Mặc định branch là main
+git config --global init.defaultBranch main
+
+# Hiển thị màu
+git config --global color.ui auto
+
+# Editor
+git config --global core.editor "code --wait"
+```
+
+---
+
+## 13. Troubleshooting
+
+### Lỗi thường gặp và cách xử lý
+
+#### "Please commit your changes or stash them before you merge/rebase"
+
+```bash
+# Giải pháp 1: Stash changes
+git stash
+git pull --rebase
 git stash pop
 
-# Apply stash c? th?
-git stash apply stash@{0}
-
-# X�a stash
-git stash drop
-```
-
----
-
-## ?? Ki?m Tra Repository Health
-
-### Xem k�ch th??c repo:
-```sh
-git count-objects -vH
-```
-
-### T�m files l?n trong history:
-```sh
-git rev-list --objects --all | git cat-file --batch-check='%(objecttype) %(objectname) %(objectsize) %(rest)' | grep '^blob' | sort -k3 -n -r | head -n 10
-```
-
-### X�a files l?n kh?i history (n�ng cao):
-```sh
-# S? d?ng BFG Repo-Cleaner (recommended)
-java -jar bfg.jar --delete-files '*.mdf' .
-git reflog expire --expire=now --all
-git gc --prune=now --aggressive
-```
-
----
-
-## ?? Best Practices
-
-### ? N�n l�m:
-
-1. **Commit th??ng xuy�n** v?i messages r� r�ng
-2. **Pull tr??c khi push** ?? tr�nh conflicts
-3. **Review code** tr??c khi commit
-4. **Test code** tr??c khi push
-5. **S? d?ng branches** cho features m?i
-6. **Kh�ng commit secrets** (passwords, keys)
-7. **Gi? commits nh?** v� focused
-8. **Document changes** trong commit messages
-
-### ? Kh�ng n�n:
-
-1. ? Commit files binary l?n (videos, databases)
-2. ? Commit generated files (bin/, obj/)
-3. ? Force push l�n main branch
-4. ? Commit secrets/passwords
-5. ? Commit work-in-progress l�n main
-6. ? S? d?ng `git add -A` m� kh�ng review
-7. ? Commit messages kh�ng r� r�ng ("fix", "update")
-8. ? Rewrite history c?a shared branches
-
----
-
-## ?? Troubleshooting
-
-### Problem: Files ?� ignore v?n xu?t hi?n trong git status
-**Solution:**
-```sh
-git rm -r --cached .
+# Giải pháp 2: Commit tạm
 git add .
-git commit -m "chore: apply .gitignore"
+git commit -m "temp: tạm thời commit"
+git pull --rebase
 ```
 
-### Problem: Conflict khi pull
-**Solution:**
-```sh
-# Xem files conflict
+#### "Your branch is ahead of 'origin/main' by X commits"
+
+```bash
+# Kiểm tra
 git status
 
-# S?a conflicts trong files
-# Sau ?�:
-git add .
-git commit -m "merge: resolve conflicts"
-```
-
-### Problem: Commit nh?m file
-**Solution:**
-```sh
-# Ch?a push
-git reset --soft HEAD~1
-# S?a v� commit l?i
-
-# ?� push (c?n c?n th?n!)
-git revert <commit-hash>
+# Push lên remote
 git push origin main
 ```
 
-### Problem: C?n quay l?i version c?
-**Solution:**
-```sh
-# T?o branch t? commit c?
-git checkout -b recovery-branch <commit-hash>
+#### "Cannot pull with rebase: Your index contains uncommitted changes"
 
-# Ho?c reset (nguy hi?m!)
-git reset --hard <commit-hash>
+```bash
+git stash
+git pull --rebase
+git stash pop
+```
+
+#### "Merge conflict" khi rebase
+
+```bash
+# Xem file conflict
+git status
+
+# Sau khi sửa conflict
+git add <file>
+git rebase --continue
+
+# Nếu muốn hủy rebase
+git rebase --abort
+```
+
+#### "Detached HEAD" state
+
+```bash
+# Tạo branch từ commit hiện tại
+git checkout -b temp-branch
+
+# Hoặc quay lại branch cũ
+git checkout main
+```
+
+#### Lỡ commit nhầm file, muốn sửa
+
+```bash
+# Sửa commit message
+git commit --amend -m "message mới"
+
+# Thêm file vào commit trước
+git add <file-thieu>
+git commit --amend --no-edit
+
+# Xóa file khỏi commit trước
+git reset --soft HEAD~1
+git reset HEAD <file-khong-muon>
+git commit -m "message đúng"
+```
+
+#### Lỡ push nhầm, muốn revert
+
+```bash
+# Cách an toàn: revert (không xóa lịch sử)
+git revert HEAD
+git push origin main
+
+# Cách nguy hiểm: reset và force push
+git reset --hard HEAD~1
+git push origin main --force   # CẢNH BÁO!
+```
+
+#### "Permission denied (publickey)"
+
+```bash
+# Kiểm tra SSH key
+ssh -T git@github.com
+
+# Tạo SSH key mới
+ssh-keygen -t ed25519 -C "email@example.com"
+# Thêm key vào ssh-agent
+eval "$(ssh-agent -s)"
+ssh-add ~/.ssh/id_ed25519
+# Thêm public key vào GitHub/GitLab
+```
+
+#### "Failed to push some refs"
+
+```bash
+# Nguyên nhân: remote có commit mới hơn
+git fetch origin
+git rebase origin/main
+git push origin main
+```
+
+#### File quá lớn không push được
+
+```bash
+# Tìm file lớn
+git rev-list --objects --all | git cat-file \
+  --batch-check='%(objecttype) %(objectname) %(objectsize) %(rest)' | \
+  awk '/^blob/ {print $3, $4}' | sort -rn | head -5
+
+# Xóa file lớn khỏi lịch sử
+git filter-branch --tree-filter 'rm -f path/to/large/file' HEAD
+git push origin --force
 ```
 
 ---
 
-## ?? T�i Li?u Tham Kh?o
+## 14. Git aliases
 
-- [Git Official Documentation](https://git-scm.com/doc)
-- [GitHub Guides](https://guides.github.com/)
-- [Conventional Commits](https://www.conventionalcommits.org/)
-- [Git Ignore Generator](https://www.toptal.com/developers/gitignore)
-
----
-
-## ?? Useful Git Aliases
-
-Th�m v�o `~/.gitconfig`:
+### Aliases hữu ích — thêm vào `~/.gitconfig`
 
 ```ini
 [alias]
-    st = status
-    co = checkout
-    br = branch
-    ci = commit
-    unstage = reset HEAD --
-    last = log -1 HEAD
-    visual = log --oneline --graph --all --decorate
-    amend = commit --amend --no-edit
-    undo = reset --soft HEAD~1
+  # Trạng thái
+  s = status
+  st = status -sb
+  ss = status --ignored
+
+  # Log
+  l = log --oneline --graph --all --decorate
+  ll = log --oneline --graph --all --decorate -20
+  lg = log --oneline --graph --all --decorate --date=relative
+  lga = log --oneline --graph --all --decorate --simplify-by-decoration
+  lp = log --oneline --graph --decorate -20
+  ls = log --name-status
+  lf = log --all --full-history --oneline -- "*.cs"
+
+  # Diff
+  d = diff
+  dc = diff --cached
+  dw = diff --word-diff
+
+  # Commit
+  c = commit
+  ca = commit --amend
+  cane = commit --amend --no-edit
+  cm = commit -m
+  co = checkout
+  cob = checkout -b
+
+  # Branch
+  b = branch
+  ba = branch -a
+  bd = branch -d
+  bdd = branch -D
+  bm = branch --merged
+  bnm = branch --no-merged
+
+  # Push/Pull
+  p = push
+  pf = push --force-with-lease
+  po = push origin
+  pu = pull
+  pur = pull --rebase
+
+  # Stash
+  sa = stash
+  sl = stash list
+  sp = stash pop
+  sa = stash apply
+  ss = stash save
+  sd = stash drop
+
+  # Reset
+  rh = reset HEAD
+  rh1 = reset HEAD~1
+  rhard = reset --hard HEAD
+  rsoft = reset --soft HEAD~1
+
+  # Other
+  unstage = reset HEAD --
+  undo = reset --soft HEAD~1
+  amend = commit --amend
+  who = shortlog -sn
+  br = branch -a --sort=-committerdate
+  cleanup = !git branch --merged | grep -v \"*\" | xargs -n 1 git branch -d
+  tagl = tag -l --sort=-v:refname
+  f = fetch --all --prune
+  undo-file = checkout --
+  ignore = "!git ls-files --others --ignored --exclude-standard"
+  contributors = shortlog -sn --all
+  changelog = log --oneline --no-merges --format='* %s (%h)'
 ```
 
-Sau ?� c� th? d�ng:
-```sh
-git st          # thay v� git status
-git co main     # thay v� git checkout main
-git visual      # xem git tree ??p
+### Cài đặt aliases qua command line
+
+```bash
+# Hoặc thêm từng alias qua command line
+git config --global alias.s status
+git config --global alias.l "log --oneline --graph --all --decorate"
+git config --global alias.lg "log --oneline --graph --all --decorate --date=relative"
+git config --global alias.d diff
+git config --global alias.dc "diff --cached"
+git config --global alias.co checkout
+git config --global alias.cob "checkout -b"
+git config --global alias.cm "commit -m"
+git config --global alias.ca "commit --amend"
+git config --global alias.p push
+git config --global alias.pf "push --force-with-lease"
+git config --global alias.pur "pull --rebase"
+git config --global alias.sa stash
+git config --global alias.sl "stash list"
+git config --global alias.sp "stash pop"
+git config --global alias.unstage "reset HEAD --"
+git config --global alias.undo "reset --soft HEAD~1"
 ```
+
+### Cách sử dụng aliases
+
+```bash
+git s          # git status
+git l          # git log đồ họa
+git cob ten    # git checkout -b ten
+git pur        # git pull --rebase
+git pf         # git push --force-with-lease
+git unstage    # git reset HEAD --
+git undo       # git reset --soft HEAD~1
+```
+
+---
+
+## Phụ lục: Cheatsheet nhanh
+
+```bash
+# Khởi tạo
+git init                                # Tạo repo mới
+git clone <url>                         # Clone repo
+
+# Thay đổi cơ bản
+git status                              # Kiểm tra trạng thái
+git add <file>                          # Stage file
+git commit -m "message"                 # Commit
+git push origin <branch>                # Push
+
+# Branch
+git branch <name>                       # Tạo branch
+git checkout <name>                     # Chuyển branch
+git checkout -b <name>                  # Tạo + chuyển
+git merge <branch>                      # Merge
+git branch -d <name>                    # Xóa branch
+
+# Cập nhật
+git pull --rebase                       # Pull với rebase
+git fetch                               # Fetch remote
+
+# Undo
+git restore <file>                      # Restore file
+git reset HEAD~1                        # Undo commit
+git revert HEAD                         # Revert commit
+
+# Xem
+git log --oneline --graph --all         # Xem lịch sử
+git diff                                # Xem thay đổi
+git blame <file>                        # Xem ai sửa dòng nào
+```
+
+---
+
+> **Lưu ý**: Hãy luôn đảm bảo `.gitignore` được cập nhật đầy đủ trước khi commit lần đầu tiên. Một khi file nhạy cảm đã lên remote, việc xóa bỏ hoàn toàn khỏi lịch sử là rất khó khăn.

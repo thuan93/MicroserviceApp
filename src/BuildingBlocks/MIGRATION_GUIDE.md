@@ -1,314 +1,280 @@
-# Migration Guide - Refactor Product.Api to use BuildingBlocks
+# Hướng dẫn Migration - Entity Framework Core
 
-## ?? T?ng quan
+## 1. Tổng quan về Migrations
 
-Document n�y h??ng d?n refactor Product.Api ?? s? d?ng c�c BuildingBlocks ?� implement.
+Migration trong EF Core là cơ chế tự động đồng bộ schema cơ sở dữ liệu với model code (C#). Khi bạn thay đổi entity, migration sẽ tạo ra file C# mô tả các thay đổi cần áp dụng lên database.
 
-## ?? M?c ti�u
+Trong MicroserviceApp, ba service sử dụng EF Core migrations:
 
-- ? S? d?ng `Infrastructure.Repositories.RepositoryBase` thay v� custom repository
-- ? S? d?ng `Shared.DTOs.ApiResponse` cho consistent API responses
-- ? S? d?ng `Contracts.DTOs` thay v� local DTOs
-- ? S? d?ng `EventBus.Messages` ?? publish events
-- ? S? d?ng `Shared.Exceptions` cho error handling
+| Service       | Database     | Provider                            | Connection                     |
+|---------------|-------------|-------------------------------------|--------------------------------|
+| Product.Api   | MySQL       | Pomelo.EntityFrameworkCore.MySql    | Port 3307, Database ProductDb  |
+| Customer.Api  | PostgreSQL  | Npgsql.EntityFrameworkCore.PostgreSQL | Port 5433, Database CustomerDb |
+| Ordering.Api  | SQL Server  | Microsoft.EntityFrameworkCore.SqlServer | Port 1435, Database OrderingDb |
 
-## ?? Step-by-Step Migration
+**Lưu ý:** Basket.Api (Redis) và Inventory.Api (MongoDB) **không** sử dụng EF Core, do đó không áp dụng migration.
 
-### Step 1: Update DTOs to use Contracts
+---
 
-**Before:**
+## 2. Khi nào cần tạo migration mới
+
+Tạo migration mới khi bạn thực hiện bất kỳ thay đổi nào sau đây trong entity hoặc cấu hình DbContext:
+
+- Thêm, sửa, xóa property trong entity class
+- Thêm, sửa, xóa DbSet trong DbContext
+- Thay đổi mapping configuration (Fluent API, Data Annotation)
+- Thay đổi relationship giữa các entity
+- Thêm index, constraint, hoặc default value
+
+**Ví dụ:** Khi bạn thêm property `PhoneNumber` vào entity `Customer`:
+
 ```csharp
-// Product.Api/DTOs/ProductDto.cs
-namespace Product.Api.DTOs;
-
-public record ProductDto
+public class Customer
 {
     public long Id { get; set; }
     public string Name { get; set; } = string.Empty;
-    // ...
+    public string PhoneNumber { get; set; } = string.Empty; // Thêm mới
 }
 ```
 
-**After:**
-```csharp
-// Use from Contracts
-using Contracts.DTOs.Product;
-// Remove local DTOs folder
-```
+---
 
-### Step 2: Update Repository to use Infrastructure
+## 3. Cách tạo migration (dùng dotnet-ef)
 
-**Before:**
-```csharp
-// Product.Api/Repositories/IProductRepository.cs
-public interface IProductRepository
-{
-    Task<IEnumerable<ProductDto>> GetAllAsync();
-    Task<ProductDto?> GetByIdAsync(long id);
-    // ...
-}
-```
+### 3.1. Cài đặt công cụ (chỉ làm một lần)
 
-**After:**
-```csharp
-using Infrastructure.Repositories;
-using Contracts.DTOs.Product;
-
-public interface IProductRepository : IRepository<Entities.Product>
-{
-    // Only keep product-specific methods
-    Task<IEnumerable<ProductDto>> GetAllProductsAsync();
-    Task<ProductDto?> GetProductByIdAsync(long id);
-    Task<IEnumerable<ProductDto>> GetByCategoryAsync(long categoryId);
-}
-
-public class ProductRepository : RepositoryBase<Entities.Product, ProductContext>, IProductRepository
-{
-    public ProductRepository(ProductContext context) : base(context)
-    {
-    }
-
-    public async Task<IEnumerable<ProductDto>> GetAllProductsAsync()
-    {
-        var products = await GetAllAsync();
-        // Map to DTOs
-    }
-    
-    // Implement other methods...
-}
-```
-
-### Step 3: Update Controller to use ApiResponse
-
-**Before:**
-```csharp
-[HttpGet("{id}")]
-public async Task<IActionResult> GetById(long id)
-{
-    var product = await _repository.GetByIdAsync(id);
-    if (product == null)
-        return NotFound();
-    return Ok(product);
-}
-```
-
-**After:**
-```csharp
-using Shared.DTOs;
-using Shared.Exceptions;
-using Contracts.DTOs.Product;
-
-[HttpGet("{id}")]
-public async Task<IActionResult> GetById(long id)
-{
-    try
-    {
-        var product = await _repository.GetProductByIdAsync(id);
-        if (product == null)
-            throw new NotFoundException(nameof(Product), id);
-            
-        return Ok(ApiResponse<ProductDto>.SuccessResult(product));
-    }
-    catch (NotFoundException ex)
-    {
-        return NotFound(ApiResponse<ProductDto>.FailureResult(ex.Message));
-    }
-}
-```
-
-### Step 4: Add Event Publishing
-
-**Install MassTransit:**
 ```bash
-dotnet add package MassTransit
-dotnet add package MassTransit.RabbitMQ
+dotnet tool install --global dotnet-ef
 ```
 
-**Update ServiceExtensions.cs:**
+Kiểm tra phiên bản:
+
+```bash
+dotnet ef --version
+```
+
+### 3.2. Tạo migration cho từng service
+
+**Product.Api (MySQL):**
+
+```bash
+cd src/Services/Product.Api
+
+dotnet ef migrations add TenMigration `
+    --context ProductContext `
+    --output-dir Migrations
+```
+
+**Customer.Api (PostgreSQL):**
+
+```bash
+cd src/Services/Customer.Api
+
+dotnet ef migrations add TenMigration `
+    --context CustomerContext `
+    --output-dir Migrations
+```
+
+**Ordering.Api (SQL Server):**
+
+```bash
+cd src/Services/Ordering.Api
+
+dotnet ef migrations add TenMigration `
+    --context OrderingContext `
+    --output-dir Migrations
+```
+
+**Giải thích tham số:**
+- `TenMigration`: tên migration, nên đặt theo chức năng (ví dụ: `AddPhoneNumberToCustomer`)
+- `--context`: tên DbContext (mặc định sẽ tự tìm nếu chỉ có một)
+- `--output-dir`: thư mục chứa file migration
+
+### 3.3. Xem migration đã tạo thành công
+
+```bash
+dotnet ef migrations list --context ProductContext
+```
+
+---
+
+## 4. Cách áp dụng migration
+
+### 4.1. Áp dụng lên database
+
+**Cách 1 - Áp dụng trực tiếp qua CLI:**
+
+```bash
+dotnet ef database update --context <DbContext>
+```
+
+Ví dụ:
+
+```bash
+# Product.Api
+cd src/Services/Product.Api
+dotnet ef database update --context ProductContext
+
+# Customer.Api
+cd src/Services/Customer.Api
+dotnet ef database update --context CustomerContext
+
+# Ordering.Api
+cd src/Services/Ordering.Api
+dotnet ef database update --context OrderingContext
+```
+
+**Cách 2 - Tự động áp dụng khi ứng dụng khởi động (không khuyến khích cho production):**
+
 ```csharp
-using MassTransit;
-
-public static IServiceCollection AddApplicationServices(this IServiceCollection services, IConfiguration configuration)
-{
-    // ... existing code ...
-    
-    // MassTransit RabbitMQ
-    services.AddMassTransit(config =>
-    {
-        config.UsingRabbitMq((context, cfg) =>
-        {
-            cfg.Host(configuration["RabbitMQ:Host"] ?? "localhost", "/", h =>
-            {
-                h.Username(configuration["RabbitMQ:Username"] ?? "guest");
-                h.Password(configuration["RabbitMQ:Password"] ?? "guest");
-            });
-        });
-    });
-
-    return services;
-}
+// Program.cs
+using var scope = app.Services.CreateScope();
+var context = scope.ServiceProvider.GetRequiredService<ProductContext>();
+await context.Database.MigrateAsync();
 ```
 
-**Update appsettings.json:**
-```json
-{
-  "RabbitMQ": {
-    "Host": "localhost",
-    "Username": "guest",
-    "Password": "guest"
-  }
-}
+### 4.2. Áp dụng lên migration cụ thể
+
+```bash
+dotnet ef database update TenMigration --context ProductContext
 ```
 
-**Publish events in repository/service:**
+---
+
+## 5. Cách rollback migration
+
+### 5.1. Rollback về migration trước đó
+
+```bash
+dotnet ef database update TenTruocDo --context ProductContext
+```
+
+Ví dụ - quay về migration `InitialCreate`:
+
+```bash
+dotnet ef database update InitialCreate --context ProductContext
+```
+
+### 5.2. Xóa migration chưa áp dụng
+
+Nếu bạn vừa tạo migration nhưng chưa `database update`, có thể xóa bằng:
+
+```bash
+dotnet ef migrations remove --context ProductContext
+```
+
+### 5.3. Rollback hoàn toàn (xóa hết database)
+
+⚠️ **Chỉ dùng trong môi trường development:**
+
+```bash
+dotnet ef database update 0 --context ProductContext
+```
+
+Sau đó xóa thư mục Migrations và tạo lại từ đầu.
+
+---
+
+## 6. Xử lý lỗi migration thường gặp
+
+### 6.1. Lỗi "No project was found"
+
+Nguyên nhân: Chạy lệnh sai thư mục.
+Giải pháp: `cd` vào đúng thư mục project (nơi có file `.csproj`).
+
+### 6.2. Lỗi "The entity type X requires a primary key"
+
+Nguyên nhân: Entity thiếu khóa chính.
+Giải pháp: Thêm property `Id` hoặc dùng `[Key]` attribute.
+
+### 6.3. Lỗi kết nối database (timeout, access denied)
+
+Nguyên nhân: Database chưa chạy hoặc sai connection string.
+Giải pháp: Kiểm tra Docker container hoặc connection string trong `appsettings.json`. Product.Api chạy MySQL port 3307, Customer.Api chạy PostgreSQL port 5433, Ordering.Api chạy SQL Server port 1435.
+
+### 6.4. Lỗi "An error occurred while accessing the database"
+
+Kiểm tra:
+
+```bash
+docker ps
+```
+
+Đảm bảo các container database đang chạy. Nếu dùng Docker Compose:
+
+```bash
+docker-compose up -d
+```
+
+### 6.5. Lỗi "Unable to create a 'DbContext' of type 'X'"
+
+Thêm `IDesignTimeDbContextFactory<TContext>` vào project:
+
 ```csharp
-using EventBus.Messages.Events.Product;
-using MassTransit;
-
-public class ProductRepository : RepositoryBase<Entities.Product, ProductContext>, IProductRepository
+public class ProductContextFactory : IDesignTimeDbContextFactory<ProductContext>
 {
-    private readonly IPublishEndpoint _publishEndpoint;
-
-    public ProductRepository(ProductContext context, IPublishEndpoint publishEndpoint) 
-        : base(context)
+    public ProductContext CreateDbContext(string[] args)
     {
-        _publishEndpoint = publishEndpoint;
+        var optionsBuilder = new DbContextOptionsBuilder<ProductContext>();
+        optionsBuilder.UseMySql("Server=localhost;Port=3307;Database=ProductDb;Uid=root;Pwd=Passw0rd!",
+            ServerVersion.AutoDetect("Server=localhost;Port=3307;Database=ProductDb;Uid=root;Pwd=Passw0rd!"));
+        return new ProductContext(optionsBuilder.Options);
     }
-
-    public async Task<ProductDto> CreateAsync(CreateProductDto dto)
-    {
-        var product = // ... create product
-        var result = await AddAsync(product);
-        
-        // Publish event
-        await _publishEndpoint.Publish(new ProductCreatedEvent
-        {
-            ProductId = result.Id,
-            Name = result.Name,
-            Price = result.Price,
-            StockQuantity = result.StockQuantity,
-            CategoryId = result.CategoryId,
-            SupplierId = result.SupplierId
-        });
-        
-        return MapToDto(result);
-    }
 }
 ```
 
-### Step 5: Add Global Exception Handler (Optional)
+---
 
-**Create Middleware:**
+## 7. Best practices
+
+### 7.1. Đặt tên migration có ý nghĩa
+
+Không đặt tên chung chung như `Migration1`, `test`, `fix`. Ví dụ:
+
+```bash
+✅ dotnet ef migrations add AddPhoneNumberToCustomer
+✅ dotnet ef migrations add CreateOrderIndex
+❌ dotnet ef migrations add test1
+```
+
+### 7.2. Commit migration vào source control
+
+Luôn commit các file migration (`*.cs`, `*.Designer.cs`, `ModelSnapshot.cs`) vào Git. Điều này giúp cả team đồng bộ schema.
+
+### 7.3. Không sửa file migration đã được áp dụng
+
+Nếu migration đã được `database update` và đã commit, **không được sửa**. Thay vào đó, tạo migration mới để khắc phục.
+
+### 7.4. Review migration trước khi áp dụng
+
+Kiểm tra file `Up()` và `Down()` trong migration để đảm bảo chúng làm đúng những gì bạn mong đợi:
+
 ```csharp
-using Shared.Exceptions;
-using Shared.DTOs;
-
-public class ExceptionHandlerMiddleware
+protected override void Up(MigrationBuilder migrationBuilder)
 {
-    private readonly RequestDelegate _next;
-    private readonly ILogger<ExceptionHandlerMiddleware> _logger;
-
-    public ExceptionHandlerMiddleware(RequestDelegate next, ILogger<ExceptionHandlerMiddleware> logger)
-    {
-        _next = next;
-        _logger = logger;
-    }
-
-    public async Task InvokeAsync(HttpContext context)
-    {
-        try
-        {
-            await _next(context);
-        }
-        catch (NotFoundException ex)
-        {
-            await HandleExceptionAsync(context, ex, StatusCodes.Status404NotFound);
-        }
-        catch (ValidationException ex)
-        {
-            await HandleExceptionAsync(context, ex, StatusCodes.Status400BadRequest, ex.Errors);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "An unhandled exception occurred");
-            await HandleExceptionAsync(context, ex, StatusCodes.Status500InternalServerError);
-        }
-    }
-
-    private static async Task HandleExceptionAsync(HttpContext context, Exception exception, int statusCode, List<string>? errors = null)
-    {
-        context.Response.ContentType = "application/json";
-        context.Response.StatusCode = statusCode;
-
-        var response = ApiResponse.FailureResult(exception.Message, errors);
-        await context.Response.WriteAsJsonAsync(response);
-    }
+    migrationBuilder.AddColumn<string>(
+        name: "PhoneNumber",
+        table: "Customers",
+        type: "longtext",
+        nullable: false);
 }
 ```
 
-**Register in Program.cs:**
-```csharp
-app.UseMiddleware<ExceptionHandlerMiddleware>();
-```
+### 7.5. Migration riêng cho từng service
 
-### Step 6: Update Entity to implement Contracts interfaces
+Mỗi service quản lý migration riêng, không gộp chung. Product.Api dùng MySQL, Customer.Api dùng PostgreSQL, Ordering.Api dùng SQL Server.
 
-**Before:**
+### 7.6. Không dùng MigrateAsync trong production
+
+Tự động migrate khi startup có thể gây lỗi nếu có nhiều instance cùng chạy. Sử dụng CI/CD pipeline để chạy `dotnet ef database update`.
+
+### 7.7. Dùng transaction cho critical migration
+
 ```csharp
-public class Product
+protected override void Up(MigrationBuilder migrationBuilder)
 {
-    public long Id { get; set; }
-    public DateTime CreatedDate { get; set; }
-    // ...
+    // Transaction sẽ tự động rollback nếu có lỗi
+    migrationBuilder.Sql("SET TRANSACTION ISOLATION LEVEL SERIALIZABLE");
+    // ... các thao tác migration ...
 }
 ```
-
-**After:**
-```csharp
-using Contracts.Common;
-
-public class Product : IEntityBase, IAuditableEntity
-{
-    public long Id { get; set; }
-    public DateTime CreatedDate { get; set; }
-    public DateTime? UpdatedDate { get; set; }
-    // ...
-}
-```
-
-## ? Verification Checklist
-
-After migration:
-- [ ] All DTOs use Contracts namespace
-- [ ] Repository extends RepositoryBase
-- [ ] Controllers return ApiResponse<T>
-- [ ] Events are published on Create/Update/Delete
-- [ ] Exception handling uses Shared.Exceptions
-- [ ] Build succeeds
-- [ ] Tests pass (if any)
-- [ ] Swagger UI works correctly
-
-## ?? Benefits After Migration
-
-? Less code to maintain  
-? Consistent responses across services  
-? Event-driven architecture  
-? Standardized error handling  
-? Reusable patterns  
-? Better separation of concerns  
-
-## ?? Next Steps
-
-1. Refactor Product.Api (this guide)
-2. Apply same patterns to Customer.Api
-3. Apply to Ordering.Api
-4. Apply to Inventory.Api
-5. Implement event consumers
-6. Add integration tests
-
-## ?? Notes
-
-- Migration kh�ng c?n l�m 1 l�c - c� th? l�m t?ng step
-- Test thoroughly sau m?i step
-- Keep backward compatibility n?u c� consumers
-- Document any breaking changes

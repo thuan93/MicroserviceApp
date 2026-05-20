@@ -1,7 +1,6 @@
 using AspNetCore.Extensions;
 using Common.Logging;
 using HealthChecks.UI.Client;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Ordering.Api.Extensions;
 using Serilog;
@@ -9,6 +8,7 @@ using Serilog;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
+builder.Services.AddMicroserviceCors();
 builder.Services.AddMicroserviceJwtAuthentication(builder.Configuration);
 builder.Services.AddApplicationServices(builder.Configuration);
 builder.Services.AddSwaggerServices(builder.Configuration);
@@ -21,6 +21,8 @@ var app = builder.Build();
 
 app.UseSerilogRequestLogging();
 
+app.UseGlobalExceptionHandler();
+
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
@@ -28,10 +30,8 @@ app.UseSwaggerUI(c =>
     c.RoutePrefix = "swagger";
 });
 
+app.UseMicroserviceCors();
 app.UseMicroserviceJwtAuthentication(app.Configuration);
-app.UseHttpsRedirection();
-app.UseAuthorization();
-
 app.MapControllers();
 
 app.MapHealthChecks("/health", new HealthCheckOptions

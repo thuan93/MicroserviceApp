@@ -11,7 +11,7 @@ Tài liệu này mô tả **trạng thái hiện tại** của solution: ranh gi
 | **Giao tiếp lỏng** | Đồng bộ qua **HTTP** (client → API Gateway → service). **Bất đồng bộ** qua **RabbitMQ** và MassTransit (publish/consume integration events trong `EventBus.Messages`). |
 | **API Gateway** | **Ocelot** (`OcelotApiGw`) gom một cổng vào (`http://localhost:5293`), route tới các downstream theo `ocelot.json` (dev) / `ocelot.Docker.json` (môi trường `Docker`). |
 | **Quan sát (observability)** | **Serilog** (logging), **OpenTelemetry** tracing gửi OTLP (mặc định `localhost:4317`; trong Docker trỏ **Jaeger** trong `docker-compose.apps.yml`). Health checks `/health` trên từng API. |
-| **Bảo mật (tùy chọn)** | **JWT Bearer** (khóa đối xứng HS256) qua building block `AspNetCore.Extensions`: khi `Jwt:Key` **không rỗng**, middleware xác thực được bật; Swagger có nút Bearer. Không bật global `[Authorize]` — thêm `[Authorize]` trên controller/action khi cần. |
+| **Bảo mật (tùy chọn)** | **JWT Bearer** (khóa đối xứng HS256) qua building block `AspNetCore.Extensions`: khi `Jwt:Key` **không rỗng**, middleware xác thực + phân quyền được bật với fallback policy yêu cầu authenticated user; Swagger có nút Bearer. Khi `Jwt:Key` rỗng, tất cả endpoint đều truy cập được (không auth). |
 
 ## Sơ đồ luồng (tóm tắt)
 
@@ -53,8 +53,18 @@ Runtime ảnh dùng tag `mcr.microsoft.com/dotnet/*:10.0-preview` (khớp target
 
 ## Building blocks
 
-- **`AspNetCore.Extensions`**: JWT tùy chọn, OpenTelemetry, helper `AddMicroserviceResilience()` cho `IHttpClientFactory` (retry/circuit breaker qua `Microsoft.Extensions.Http.Resilience`).
+- **`AspNetCore.Extensions`**: JWT tùy chọn + fallback authorization policy, OpenTelemetry, Global Exception Handler (`ExceptionMiddleware`), CORS (`CorsExtensions`), helper `AddMicroserviceResilience()` cho `IHttpClientFactory` (retry/circuit breaker qua `Microsoft.Extensions.Http.Resilience`).
 - **`Common.Logging`**, **`EventBus.Messages`**, **`Infrastructure`**, **`Contracts`**, **`Shared`**: như các project hiện có.
+
+## Những cải tiến gần đây
+
+- **Global Exception Handler**: Middleware tập trung xử lý mọi exception, trả về `ApiResponse` chuẩn (không leak stack trace).
+- **CORS**: Cấu hình AllowAll policy, áp dụng cho tất cả services + Gateway.
+- **FluentValidation**: Validators cho Product.Api, Customer.Api, Basket.Api (tự động validate input).
+- **Pagination**: `GET /api/products?pageIndex=1&pageSize=20`, `GET /api/customers?pageIndex=1&pageSize=20` trả về `PaginatedResult<T>`.
+- **Checkout Event**: Basket.Api checkout publish `OrderCreatedEvent` qua MassTransit thay vì chỉ xóa giỏ hàng.
+- **EF Migrations**: Customer.Api (PostgreSQL) và Ordering.Api (SQL Server) đã có migrations.
+- **Authorization Policy**: Khi `Jwt:Key` được cấu hình, fallback policy yêu cầu authenticated user trên tất cả endpoint.
 
 ## Việc chưa làm hoặc ngoài phạm vi demo
 

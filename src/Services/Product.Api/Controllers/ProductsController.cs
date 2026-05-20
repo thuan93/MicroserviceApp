@@ -20,11 +20,15 @@ public class ProductsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<ApiResponse<IEnumerable<ProductDto>>>> GetAll()
+    public async Task<ActionResult<ApiResponse<IEnumerable<ProductDto>>>> GetAll([FromQuery] int pageIndex = 1, [FromQuery] int pageSize = 20)
     {
-        _logger.LogInformation("Getting all products");
-        var products = await _productRepository.GetAllProductsAsync();
-        return Ok(ApiResponse<IEnumerable<ProductDto>>.SuccessResult(products, "Products retrieved successfully"));
+        _logger.LogInformation("Getting products page {PageIndex} with size {PageSize}", pageIndex, pageSize);
+
+        if (pageSize > 100) pageSize = 100;
+        if (pageIndex < 1) pageIndex = 1;
+
+        var result = await _productRepository.GetProductsPagedAsync(pageIndex, pageSize);
+        return Ok(ApiResponse<PaginatedResult<ProductDto>>.SuccessResult(result, "Products retrieved successfully"));
     }
 
     [HttpGet("{id}")]

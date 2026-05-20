@@ -1,4 +1,4 @@
-name: Build solution
+name: Build, Test & Docker
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
     branches: [main, master, develop]
 
 jobs:
-  build:
+  build-and-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -15,11 +15,70 @@ jobs:
       - name: Setup .NET SDK
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: |
-            10.0.x
+          dotnet-version: "10.0.x"
 
       - name: Restore
         run: dotnet restore MicroserviceApp.sln
 
       - name: Build
         run: dotnet build MicroserviceApp.sln --no-restore -c Release
+
+      - name: Check NuGet vulnerabilities
+        run: dotnet list MicroserviceApp.sln package --vulnerable --include-transitive
+
+  docker-build:
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build product-api
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: src/Services/Product.Api/Dockerfile
+          load: true
+          tags: product-api:ci
+
+      - name: Build customer-api
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: src/Services/Customer.Api/Dockerfile
+          load: true
+          tags: customer-api:ci
+
+      - name: Build basket-api
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: src/Services/Basket.Api/Dockerfile
+          load: true
+          tags: basket-api:ci
+
+      - name: Build ordering-api
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: src/Services/Ordering.Api/Dockerfile
+          load: true
+          tags: ordering-api:ci
+
+      - name: Build inventory-api
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: src/Services/Inventory.Api/Dockerfile
+          load: true
+          tags: inventory-api:ci
+
+      - name: Build ocelot-apigw
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: src/ApiGateways/OcelotApiGw/Dockerfile
+          load: true
+          tags: ocelot-apigw:ci

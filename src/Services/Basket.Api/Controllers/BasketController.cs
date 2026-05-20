@@ -1,6 +1,8 @@
 using Basket.Api.DTOs;
 using Basket.Api.Entities;
 using Basket.Api.Repositories.Interfaces;
+using EventBus.Messages.Events.Order;
+using MassTransit;
 using Microsoft.AspNetCore.Mvc;
 using Shared.DTOs;
 
@@ -11,11 +13,13 @@ namespace Basket.Api.Controllers;
 public class BasketController : ControllerBase
 {
     private readonly IBasketRepository _basketRepository;
+    private readonly IPublishEndpoint _publishEndpoint;
     private readonly ILogger<BasketController> _logger;
 
-    public BasketController(IBasketRepository basketRepository, ILogger<BasketController> logger)
+    public BasketController(IBasketRepository basketRepository, IPublishEndpoint publishEndpoint, ILogger<BasketController> logger)
     {
         _basketRepository = basketRepository;
+        _publishEndpoint = publishEndpoint;
         _logger = logger;
     }
 
@@ -158,12 +162,22 @@ public class BasketController : ControllerBase
             return BadRequest(ApiResponse.FailureResult("Basket is empty"));
         }
 
-        // In a real system, you would:
-        // 1. Create an order in Ordering.Api
-        // 2. Publish OrderCreatedEvent
-        // 3. Clear the basket
-        // For now, just clear the basket
-        
+        var orderCreatedEvent = new OrderCreatedEvent
+        {
+            OrderId = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+            CustomerId = 0, // Will be populated when auth is implemented
+            TotalAmount = basket.TotalPrice,
+            Items = basket.Items.Select(i => new OrderItemDto
+            {
+                ProductId = i.ProductId,
+                Quantity = i.Quantity,
+                Price = i.Price
+            }).ToList()
+        };
+
+        await _publishEndpoint.Publish(orderCreatedEvent);
+        _logger.LogInformation("Published OrderCreatedEvent for order {OrderId}", orderCreatedEvent.OrderId);
+
         await _basketRepository.DeleteBasketAsync(userName);
         
         return Ok(ApiResponse.SuccessResult("Checkout completed successfully"));

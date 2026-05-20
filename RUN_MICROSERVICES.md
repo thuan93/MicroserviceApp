@@ -183,8 +183,10 @@ Các API đã cấu hình gửi trace tới `http://localhost:4317` (xem `appset
 ## Ghi chú nhanh
 
 - **Đọc kiến trúc chi tiết:** `MICROSERVICE_ARCHITECTURE.md`
-- **Bật JWT:** đặt `Jwt:Key`, `Jwt:Issuer`, `Jwt:Audience` (cùng key/issuer/audience) trong appsettings của API và Gateway; endpoint vẫn mở nếu chưa gắn `[Authorize]` trên controller.
+- **Bật JWT:** đặt `Jwt:Key`, `Jwt:Issuer`, `Jwt:Audience` (cùng key/issuer/audience) trong appsettings của API và Gateway; khi JWT được bật, **tất cả endpoint yêu cầu authenticated user** (fallback policy).
 - **Firewall / port trùng:** nếu `address already in use`, đổi cổng trong `launchSettings.json` hoặc dừng process đang giữ cổng.
+- **Pagination:** List endpoints hỗ trợ phân trang: `GET /api/products?pageIndex=1&pageSize=20`, `GET /api/customers?pageIndex=1&pageSize=20`.
+- **Global Exception Handler:** Mọi lỗi đều được bắt và trả về `ApiResponse` chuẩn (không leak stack trace).
 
 ---
 

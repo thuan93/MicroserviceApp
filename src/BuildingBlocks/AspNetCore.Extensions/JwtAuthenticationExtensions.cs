@@ -1,5 +1,6 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,8 +16,8 @@ public static class JwtAuthenticationExtensions
         !string.IsNullOrWhiteSpace(configuration[$"{SectionName}:Key"]);
 
     /// <summary>
-    /// Registers JWT bearer validation when Jwt:Key is set. Does not enforce authentication globally;
-    /// use [Authorize] on endpoints that must require a token.
+    /// Registers JWT bearer validation when Jwt:Key is set.
+    /// Adds a global authorization filter only when JWT is configured.
     /// </summary>
     public static IServiceCollection AddMicroserviceJwtAuthentication(this IServiceCollection services, IConfiguration configuration)
     {
@@ -39,13 +40,23 @@ public static class JwtAuthenticationExtensions
                 };
             });
 
+        services.AddAuthorization(options =>
+        {
+            options.FallbackPolicy = new AuthorizationPolicyBuilder()
+                .RequireAuthenticatedUser()
+                .Build();
+        });
+
         return services;
     }
 
     public static IApplicationBuilder UseMicroserviceJwtAuthentication(this IApplicationBuilder app, IConfiguration configuration)
     {
         if (configuration.IsJwtConfigured())
+        {
             app.UseAuthentication();
+            app.UseAuthorization();
+        }
 
         return app;
     }

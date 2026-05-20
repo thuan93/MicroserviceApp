@@ -1,157 +1,161 @@
-# BuildingBlocks - Quick Start Checklist
+# Danh Sách Công Việc Triển Khai Microservice
 
-## ? Implementation Status
+> Cập nhật lần cuối: 15/05/2026
 
-### Infrastructure BuildingBlock
-- [x] IRepository<T> interface
-- [x] RepositoryBase<T, TContext> implementation
-- [x] IUnitOfWork & UnitOfWork
-- [x] ISpecification<T> & BaseSpecification<T>
-- [x] README documentation
-- [x] Build successful
+---
 
-### Shared BuildingBlock
-- [x] ApiResponse<T> & ApiResponse
-- [x] PaginatedResult<T>
-- [x] ApiConstants
-- [x] StringExtensions
-- [x] DateTimeExtensions
-- [x] Custom Exceptions (NotFoundException, ValidationException, etc.)
-- [x] README documentation
-- [x] Build successful
+## 1. Tầng Cơ Sở Dữ Liệu (Database Layer)
 
-### Contracts BuildingBlock
-- [x] Base interfaces (IEntityBase, IAuditableEntity, ISoftDelete)
-- [x] Product DTOs
-- [x] Category DTOs
-- [x] Supplier DTOs
-- [x] README documentation
-- [x] Build successful
+- [x] Cấu hình DbContext cho từng service (Product, Customer, Ordering, Inventory, Basket)
+- [x] Định nghĩa Entity và Fluent API Configuration cho từng service
+- [x] Migration cho Product.Api (InitialCreate + UpdatedEntities)
+- [x] Migration cho Customer.Api (InitialCreate)
+- [x] Migration cho Ordering.Api (InitialCreate)
+- [x] Migration cho Inventory.Api
+- [x] Migration cho Basket.Api
+- [ ] Thiết lập đánh chỉ mục (Index) cho các cột truy vấn thường xuyên
+- [ ] Tối ưu hóa kiểu dữ liệu cột (decimal precision, varchar length)
+- [ ] Thiết lập Soft Delete cho các entity chính
+- [ ] Cơ chế tự động áp dụng migration khi khởi động (Auto Migrate)
+- [ ] Seed data cho môi trường phát triển
+- [ ] Phân tách database riêng cho mỗi service (Database per Service)
 
-### EventBus.Messages BuildingBlock
-- [x] IntegrationBaseEvent
-- [x] Product Events (4 events)
-- [x] Order Events (3 events)
-- [x] Inventory Events (3 events)
-- [x] Customer Events (3 events)
-- [x] README documentation
-- [x] Build successful
+## 2. Tầng Repository (Repository Layer)
 
-### Common.Logging BuildingBlock
-- [x] Already implemented (Serilog)
-- [x] Working in Product.Api
+- [x] Generic Repository (`RepositoryBase<TEntity, TContext>`) — CRUD cơ bản
+- [x] Interface `IRepository<TEntity>` với các phương thức: GetAll, GetById, Add, Update, Delete, Find, Count
+- [x] `IUnitOfWork` / `UnitOfWork<TContext>` hỗ trợ transaction
+- [x] `ProductRepository` / `IProductRepository` — thêm truy vấn theo Category, Supplier
+- [x] `CustomerRepository` / `ICustomerRepository` — thêm truy vấn theo Email
+- [x] `OrderRepository` / `IOrderRepository` — thêm truy vấn theo CustomerId, trạng thái
+- [x] `InventoryRepository` / `IInventoryRepository` — ReserveStock, ReleaseStock, UpdateStock
+- [ ] Specification Pattern cho truy vấn phức tạp (BaseSpecification đã có, cần tích hợp vào Repository)
+- [ ] Repository hỗ trợ phân trang (PagedResult)
+- [ ] Repository hỗ trợ Include/ThenInclude linh hoạt
+- [ ] Caching layer (Redis) cho Repository
 
-### Documentation
-- [x] BuildingBlocks/README.md (overview)
-- [x] BuildingBlocks/MIGRATION_GUIDE.md
-- [x] BuildingBlocks/IMPLEMENTATION_SUMMARY.md
-- [x] Individual READMEs for each BuildingBlock
+## 3. Tầng Service / Business Logic (Service Layer)
 
-## ?? How to Use (Quick Examples)
+- [ ] Tách Service layer riêng giữa Controller và Repository
+- [ ] `ProductService` — xử lý nghiệp vụ sản phẩm, phát sự kiện khi tạo/cập nhật/xoá
+- [ ] `CustomerService` — xử lý nghiệp vụ khách hàng, phát sự kiện khi tạo/cập nhật/xoá
+- [ ] `OrderService` — xử lý nghiệp vụ đơn hàng, kiểm tra tồn kho trước khi tạo
+- [ ] `BasketService` — xử lý giỏ hàng, tính toán tổng tiền
+- [ ] `InventoryService` — xử lý tồn kho, cảnh báo hàng thấp
+- [ ] Validation với FluentValidation (đã có cho Customer và Product DTO)
+- [ ] AutoMapper hoặc Mapster để ánh xạ Entity ↔ DTO
+- [ ] Xử lý ngoại lệ tập trung (ExceptionMiddleware đã có)
+- [ ] Outbox Pattern cho phát sự kiện đảm bảo consistent
+- [ ] Circuit Breaker / Retry cho các gọi service ngoài
 
-### 1. Repository Pattern
-```csharp
-// Step 1: Create interface
-public interface IProductRepository : IRepository<Product>
-{
-    Task<IEnumerable<Product>> GetByCategoryAsync(long categoryId);
-}
+## 4. Tầng API / Controller (API Layer)
 
-// Step 2: Implement
-public class ProductRepository : RepositoryBase<Product, ProductContext>, IProductRepository
-{
-    public ProductRepository(ProductContext context) : base(context) { }
-    
-    public async Task<IEnumerable<Product>> GetByCategoryAsync(long categoryId)
-        => await FindAsync(p => p.CategoryId == categoryId);
-}
+- [x] `ProductsController` — CRUD sản phẩm, phân loại theo Category
+- [x] `CustomersController` — CRUD khách hàng
+- [x] `OrdersController` — CRUD đơn hàng
+- [x] `BasketController` — thêm/sửa/xoá sản phẩm trong giỏ
+- [ ] `SuppliersController` — quản lý nhà cung cấp
+- [ ] `CategoriesController` — quản lý danh mục
+- [ ] Định nghĩa DTO đầy đủ cho Request/Response
+- [ ] API Versioning
+- [ ] Rate Limiting
+- [ ] Response chuẩn hoá (ApiResponse<T> đã có)
+- [ ] Attribute-based validation
+- [ ] API Documentation với Swagger/OpenAPI (SwaggerGenJwt đã có)
 
-// Step 3: Register
-services.AddScoped<IProductRepository, ProductRepository>();
-```
+## 5. Event Bus / Messaging
 
-### 2. API Response
-```csharp
-[HttpGet("{id}")]
-public async Task<IActionResult> Get(long id)
-{
-    var product = await _repo.GetByIdAsync(id);
-    return Ok(ApiResponse<Product>.SuccessResult(product));
-}
-```
+- [x] Cấu hình MassTransit với RabbitMQ trong tất cả service
+- [x] `IntegrationBaseEvent` — lớp cơ sở cho tất cả sự kiện
+- [x] `ProductCreatedEvent`, `ProductUpdatedEvent`, `ProductDeletedEvent`, `ProductStockUpdatedEvent`
+- [x] `CustomerCreatedEvent`, `CustomerUpdatedEvent`, `CustomerDeletedEvent`
+- [x] `OrderCreatedEvent`, `OrderUpdatedEvent`, `OrderCancelledEvent`
+- [x] `InventoryReservedEvent`, `InventoryReleasedEvent`, `InventoryLowStockEvent`
+- [x] `CustomerCreatedConsumer` + `CustomerUpdatedConsumer` (Ordering.Api)
+- [x] `ProductCreatedConsumer`, `ProductUpdatedConsumer`, `ProductDeletedConsumer`, `ProductStockUpdatedConsumer` (Inventory.Api)
+- [x] `OrderCreatedConsumer`, `OrderCancelledConsumer` (Inventory.Api)
+- [ ] Sự kiện xoá khách hàng — xoá dữ liệu liên quan ở Ordering
+- [ ] Sự kiện đơn hàng bị huỷ — ReleaseStock hoàn chỉnh
+- [ ] Sự kiện thanh toán (PaymentCompleted, PaymentFailed)
+- [ ] Saga Pattern / Orchestration cho quy trình đặt hàng
+- [ ] Dead Letter Queue và xử lý lỗi messaging
+- [ ] Kiểm tra tính đúng đắn của message (message contract validation)
+- [ ] Monitoring queue (RabbitMQ Management UI)
 
-### 3. Events
-```csharp
-// Publish
-await _publishEndpoint.Publish(new ProductCreatedEvent
-{
-    ProductId = product.Id,
-    Name = product.Name
-});
+## 6. Bảo Mật (Security)
 
-// Consume
-public class ProductCreatedConsumer : IConsumer<ProductCreatedEvent>
-{
-    public async Task Consume(ConsumeContext<ProductCreatedEvent> context)
-    {
-        // Handle event
-    }
-}
-```
+- [x] JWT Authentication — `AddMicroserviceJwtAuthentication`
+- [x] Cấu hình JWT Bearer token validation
+- [x] Swagger tích hợp JWT (Authorize button)
+- [x] CORS — `AddMicroserviceCors`
+- [ ] Xác thực người dùng (Identity/Login)
+- [ ] Authorization Policies cho từng endpoint
+- [ ] Role-based access control (Admin, User, Manager)
+- [ ] Bảo vệ API Key cho Ocelot Api Gateway
+- [ ] Mã hoá dữ liệu nhạy cảm trong database
+- [ ] HTTPS enforcement
+- [ ] Input sanitization
+- [ ] Audit Log (ghi lại các thao tác quan trọng)
 
-### 4. Exceptions
-```csharp
-if (product == null)
-    throw new NotFoundException(nameof(Product), id);
+## 7. Giám Sát & Quan Sát (Monitoring & Observability)
 
-throw new ValidationException(new List<string> { "Name required" });
-```
+- [x] Serilog — ghi log cấu trúc ra Console và Debug
+- [x] OpenTelemetry — tracing với OTLP export hỗ trợ Jaeger/ Aspire
+- [x] Health Checks endpoint `/health` trong tất cả service
+- [x] `WebHealthStatus` — dashboard theo dõi health check
+- [ ] Serilog ghi log ra file / Elasticsearch
+- [ ] Serilog ghi log ra Seq
+- [ ] Metrics với Prometheus (số request, thời gian phản hồi, lỗi)
+- [ ] Grafana dashboard cho metrics
+- [ ] Distributed tracing hoàn chỉnh qua tất cả service
+- [ ] Cảnh báo (Alert) khi service ngừng hoạt động
+- [ ] Centralized logging (ELK stack hoặc Graylog)
+- [ ] Custom Health Checks (kiểm tra kết nối DB, RabbitMQ, Redis)
 
-### 5. Pagination
-```csharp
-var items = await _repo.GetAllAsync();
-var result = new PaginatedResult<Product>(items.ToList(), totalCount, pageIndex, pageSize);
-```
+## 8. Docker & Triển Khai (Docker & Deployment)
 
-## ?? Migration Checklist (Product.Api)
+- [x] Dockerfile cho Product.Api
+- [x] Dockerfile cho Customer.Api
+- [x] Dockerfile cho Ordering.Api
+- [x] Dockerfile cho Basket.Api
+- [x] Dockerfile cho Inventory.Api
+- [x] Dockerfile cho OcelotApiGw
+- [x] `docker-compose.yml` — cấu hình cơ bản
+- [x] `docker-compose.dev.yml` — môi trường phát triển
+- [x] `docker-compose.prod.yml` — môi trường sản xuất
+- [x] `docker-compose.override.yml`
+- [ ] Dockerfile cho ScheduleJob
+- [ ] Docker Compose với PostgreSQL, RabbitMQ, Redis
+- [ ] Docker Compose với Seq, Jaeger
+- [ ] Biến môi trường (.env) cho tất cả cấu hình
+- [ ] CI/CD pipeline (GitHub Actions)
+- [ ] Kubernetes manifests (Deployment, Service, ConfigMap, Secret)
+- [ ] Liveness / Readiness probes cho Kubernetes
+- [ ] Horizontal Pod Autoscaler (HPA)
 
-- [ ] Update DTOs to use Contracts namespace
-- [ ] Refactor repository to extend RepositoryBase
-- [ ] Update controllers to return ApiResponse<T>
-- [ ] Add MassTransit for event publishing
-- [ ] Publish events on Create/Update/Delete
-- [ ] Use Shared exceptions
-- [ ] Add global exception middleware
-- [ ] Update entity to implement Contracts interfaces
-- [ ] Test all endpoints
-- [ ] Verify Swagger UI
+## 9. Kiểm Thử (Testing)
 
-## ?? Benefits
+- [ ] Tạo project `Product.Api.Tests`
+- [ ] Tạo project `Customer.Api.Tests`
+- [ ] Tạo project `Ordering.Api.Tests`
+- [ ] Tạo project `Basket.Api.Tests`
+- [ ] Tạo project `Inventory.Api.Tests`
+- [ ] Unit Test cho Repository (dùng InMemoryProvider / SQLite)
+- [ ] Unit Test cho Service / Business Logic
+- [ ] Unit Test cho Validators (FluentValidation)
+- [ ] Integration Test cho API endpoints
+- [ ] Integration Test cho MassTransit Consumers
+- [ ] Integration Test cho Health Checks
+- [ ] Test Containers cho database thật
+- [ ] Load Test / Performance Test (k6 hoặc NBomber)
+- [ ] Code coverage report
+- [ ] Test tự động trong CI/CD pipeline
 
-? **80% less boilerplate code**  
-? **Consistent patterns across services**  
-? **Event-driven architecture ready**  
-? **Type-safe contracts**  
-? **Better maintainability**  
-? **Faster development**  
+---
 
-## ?? Documentation Links
+## Chú Thích
 
-- [Overview](README.md)
-- [Migration Guide](MIGRATION_GUIDE.md)
-- [Implementation Summary](IMPLEMENTATION_SUMMARY.md)
-- [Infrastructure](Infrastructure/README.md)
-- [Shared](Shared/README.md)
-- [Contracts](Contracts/README.md)
-- [EventBus.Messages](EventBus.Messages/README.md)
-
-## ? Verification
-
-```bash
-# Build all
-dotnet build
-
-# Should see: Build succeeded. 0 Error(s)
-```
-
-**Status:** ? ALL COMPLETE - Ready to use!
+| Ký hiệu | Ý nghĩa |
+|---------|---------|
+| [x] | Đã hoàn thành |
+| [ ] | Chưa thực hiện / Cần bổ sung |
