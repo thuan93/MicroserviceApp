@@ -32,8 +32,6 @@ app.UseSwaggerUI(c =>
 
 app.UseMicroserviceCors();
 app.UseMicroserviceJwtAuthentication(app.Configuration);
-app.UseHttpsRedirection();
-
 app.MapControllers();
 
 app.MapHealthChecks("/health", new HealthCheckOptions

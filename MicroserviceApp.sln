@@ -70,6 +70,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OcelotApiGw", "src\ApiGatew
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AspNetCore.Extensions", "src\BuildingBlocks\AspNetCore.Extensions\AspNetCore.Extensions.csproj", "{09A12CF8-2F25-49DF-A18E-A20DB6D4DAC6}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Auth.Api", "src\Services\Auth.Api\Auth.Api.csproj", "{5D34C84F-809E-44FE-8D35-3E3737D151CC}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -248,6 +250,18 @@ Global
 		{09A12CF8-2F25-49DF-A18E-A20DB6D4DAC6}.Release|x64.Build.0 = Release|Any CPU
 		{09A12CF8-2F25-49DF-A18E-A20DB6D4DAC6}.Release|x86.ActiveCfg = Release|Any CPU
 		{09A12CF8-2F25-49DF-A18E-A20DB6D4DAC6}.Release|x86.Build.0 = Release|Any CPU
+		{5D34C84F-809E-44FE-8D35-3E3737D151CC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5D34C84F-809E-44FE-8D35-3E3737D151CC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5D34C84F-809E-44FE-8D35-3E3737D151CC}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{5D34C84F-809E-44FE-8D35-3E3737D151CC}.Debug|x64.Build.0 = Debug|Any CPU
+		{5D34C84F-809E-44FE-8D35-3E3737D151CC}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{5D34C84F-809E-44FE-8D35-3E3737D151CC}.Debug|x86.Build.0 = Debug|Any CPU
+		{5D34C84F-809E-44FE-8D35-3E3737D151CC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5D34C84F-809E-44FE-8D35-3E3737D151CC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5D34C84F-809E-44FE-8D35-3E3737D151CC}.Release|x64.ActiveCfg = Release|Any CPU
+		{5D34C84F-809E-44FE-8D35-3E3737D151CC}.Release|x64.Build.0 = Release|Any CPU
+		{5D34C84F-809E-44FE-8D35-3E3737D151CC}.Release|x86.ActiveCfg = Release|Any CPU
+		{5D34C84F-809E-44FE-8D35-3E3737D151CC}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -277,6 +291,7 @@ Global
 		{EBFDBC71-CF6C-4340-ACDC-F121A85467CE} = {13DCAA09-C11B-49E0-B0D3-E4E45BAD4D0D}
 		{93AFB11C-F4F4-4598-B703-AA745CC27B5E} = {D713EDC5-5262-401D-A536-B3D320284813}
 		{09A12CF8-2F25-49DF-A18E-A20DB6D4DAC6} = {13DCAA09-C11B-49E0-B0D3-E4E45BAD4D0D}
+		{5D34C84F-809E-44FE-8D35-3E3737D151CC} = {569B9F64-AEE5-4161-A022-161F7467DB5A}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {A0D1D2F3-90E3-43EB-BEF8-EC989501DDAC}
